@@ -58,6 +58,14 @@ Run the executable from the `src/` directory (or specify the path to your gramma
    ./vlcGrammarTools --to-lalr1 ../grammar_src/grammar_001.grm
    ```
 
+## Running Memory Tests (Valgrind)
+
+To verify that there are no memory leaks or invalid memory accesses across all parsing and conversion paths, run the included Valgrind test suite:
+
+```bash
+./tests/valgrind_test.sh
+```
+
 ## License
 
 This project is licensed under the GNU General Public License — see the [LICENSE](LICENSE) file for details.

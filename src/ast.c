@@ -51,14 +51,14 @@ void InitTables(Tables *pTables)
 
 // *********************************** Begin ConstraintsList ****************************************
 
-void FreeConstraintsList(ConstraintsList *first)
+void FreeConstraintsList(ConstraintsList *pList)
 {
-	ConstraintsList *n1 = first, *n2;
-	while ( n1 != NULL )
+	ConstraintsList *pCurr = pList;
+	while (pCurr != NULL)
 	{
-		n2 = n1->next;
-		free(n1);
-		n1 = n2;
+		ConstraintsList *pNext = pCurr->next;
+		free(pCurr);
+		pCurr = pNext;
 	}
 }
 
@@ -66,7 +66,7 @@ ConstraintsList* NewNodeConstraintsList(ConstraintsList *Elem)
 {
 	ConstraintsList *n;
 
-	n = (ConstraintsList*)malloc(sizeof(ConstraintsList));
+	n = (ConstraintsList*)calloc(1, sizeof(ConstraintsList));
 
 	if( n == NULL )
 		return NULL;
@@ -1469,6 +1469,7 @@ void MakeFollowSets(Tables *pTables)
 	}
 	free(pHashTable);
 
+	FreeConstraintsList(pConstraintsList);
 	free(paNonTerminals);
 }
 

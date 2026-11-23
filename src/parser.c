@@ -186,8 +186,7 @@ int Parse(char *szFileName, Tables *pTables)
 	if ( !InitParser(&myParserParams) )
 		return 0;
 		
-	if ( !ReadFile(szFileName, &(myParserParams.sp)) )
-		return 0;
+	if ( !ReadFile(szFileName, &(myParserParams.sp)) ) { FreeScanner(&(myParserParams.sp)); FreeParser(&myParserParams); return 0; }
 					
 	GetNextToken(&(myParserParams.myToken), &(myParserParams.sp));
 
