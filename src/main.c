@@ -1,13 +1,3 @@
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
-#ifndef PACKAGE_NAME
-#define PACKAGE_NAME "vlcGrammarTools"
-#endif
-#ifndef PACKAGE_VERSION
-#define PACKAGE_VERSION "2.0"
-#endif
-
 /*
    Copyright (C) 2013-2026 Vincenzo Lo Cicero
 
@@ -21,7 +11,7 @@
    the Free Software Foundation, either version 3 of the License, or
    (at your option) any later version.
 
-   myoptParserLib is distributed in the hope that it will be useful,
+   vlcGrammarTools is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
    GNU General Public License for more details.
@@ -29,6 +19,16 @@
    You should have received a copy of the GNU General Public License
    along with myoptParserLib.  If not, see <http://www.gnu.org/licenses/>.
 */
+
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+#ifndef PACKAGE_NAME
+#define PACKAGE_NAME "vlcGrammarTools"
+#endif
+#ifndef PACKAGE_VERSION
+#define PACKAGE_VERSION "2.0"
+#endif
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -105,7 +105,7 @@ static void PrintHelpInfo(myopt_Parser_t optParser)
 {
     printf("%s %s - Analizzatore e Convertitore di Grammatiche LL(1) / LALR(1)\n\n",
            PACKAGE_NAME, PACKAGE_VERSION);
-    PrintHelpInfo(optParser);
+    printf("%s\n", optParser->strUsage);
     printf("Esempi:\n");
     printf("  %s grammar_001.grm\n", PACKAGE_NAME);
     printf("  %s -c -o out_converted grammar_022.grm\n\n", PACKAGE_NAME);
@@ -118,14 +118,12 @@ static void PrintLicenseInfo(void)
 	printf("Author: Vincenzo Lo Cicero.\n");
 	printf("e-mail: vincenzolocicero68@gmail.com\n");
 	printf("\n");
-	printf("This file is part of vlcGrammarTools.\n");
-	printf("\n");
 	printf("vlcGrammarTools is free software: you can redistribute it and/or modify\n");
 	printf("it under the terms of the GNU General Public License as published by\n");
 	printf("the Free Software Foundation, either version 3 of the License, or\n");
 	printf("(at your option) any later version.\n");
 	printf("\n");
-	printf("myoptParserLib is distributed in the hope that it will be useful,\n");
+	printf("vlcGrammarTools is distributed in the hope that it will be useful,\n");
 	printf("but WITHOUT ANY WARRANTY; without even the implied warranty of\n");
 	printf("MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the\n");
 	printf("GNU General Public License for more details.\n");
