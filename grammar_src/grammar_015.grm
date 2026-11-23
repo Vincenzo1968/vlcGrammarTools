@@ -1,0 +1,12 @@
+
+s : a b c d;
+
+a : c e;
+
+b : Z X Q;
+
+c : W|;
+
+d : "ciao";
+
+e : "salve" | ;

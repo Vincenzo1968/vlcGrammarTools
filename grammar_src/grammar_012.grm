@@ -1,0 +1,15 @@
+expr   : term expr1;
+
+expr1  : '+' term expr1;
+
+expr1  : ;
+
+term expr  : factor term1;
+
+term1  : '*' factor term1;
+
+term1  : ;
+
+Factor : '(' expr ')';
+
+factor : "ciao" | "prova" | "salve" | T_ID;

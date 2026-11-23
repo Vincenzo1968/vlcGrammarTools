@@ -1,0 +1,9 @@
+start  : expr ;
+expr   : term exprp ;
+exprp  : '+' term exprp | '-' term exprp | ;
+term   : fact termp ;
+termp  : '*' fact termp | '/' fact termp | ;
+fact   : '-' expon | expon ;
+expon  : factp exponp ;
+exponp : '^' factp exponp | ;
+factp  : '(' expr ')' | NUM ;

@@ -1,0 +1,14 @@
+
+A : a B ;
+
+B : C c A b c A c ;
+
+C : x y z ;
+
+
+
+/*
+A -> a B 
+B -> C c A b c A c
+C -> x y z
+*/

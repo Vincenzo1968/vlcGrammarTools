@@ -1,0 +1,16 @@
+expr   : term expr1;
+
+expr1  : '+' term expr1;
+
+expr1  : ;
+
+term   : factor term1;
+
+term1  : '*' factor term1;
+
+term1  : ;
+
+factor : '(' expr ')';
+
+factor : T_ID | "ciao" | 123PROVA_ERRORE | ' x' | 'y ' | ' z ';
+

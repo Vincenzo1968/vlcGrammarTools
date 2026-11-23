@@ -1,0 +1,8 @@
+
+S   : g B d SPP | h f d SPP ;
+
+SP  : e B d SP | ;
+
+SPP : h B d SP | e B d SP | ;
+
+B   : g | ;

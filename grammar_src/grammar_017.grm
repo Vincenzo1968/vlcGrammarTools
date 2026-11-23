@@ -1,0 +1,6 @@
+s : a b;
+a : XXX | ;
+b : ZZZ | "ciao" | ;
+c : a Q;
+d : b c X c Z;
+

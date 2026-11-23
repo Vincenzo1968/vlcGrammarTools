@@ -1,0 +1,15 @@
+Expr   : Term Expr1;
+
+Expr1  : '+' Term Expr1;
+
+Expr1  : ;
+
+Term   : Factor Term1;
+
+Term1  : '*' Factor Term1;
+
+Term1  : ;
+
+Factor : '(' Expr ')';
+
+Factor : t_ID;
