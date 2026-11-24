@@ -1201,12 +1201,33 @@ void MakeLalrCFile(Tables *pTables, LalrTables *pLalr, const char *szFileName)
 		for (int nt = 0; nt < numNT; nt++) { fprintf(fp, "%3d", pLalr->gotoTable[st][nt]); if (nt < numNT - 1) fprintf(fp, ", "); }
 		fprintf(fp, " }%s\n", (st < pLalr->numStates - 1) ? "," : "");
 	}
-	fprintf(fp, "};\n\nint ParseLALR1(yyscan_t yyscanner, YYSTYPE *pResult)\n{\n\tint stateStack[1024], top = 0;\n\tYYSTYPE valStack[1024];\n\tYYSTYPE yylval = (YYSTYPE)0;\n\tstateStack[0] = 0;\n\tint lookahead = yylex(&yylval, yyscanner);\n");
-	fprintf(fp, "\twhile (1) {\n\t\tint st = stateStack[top];\n\t\tLalrCell cell = (lookahead >= 0 && lookahead < LALR_NUM_TERMINALS) ? actionTable[st][lookahead] : (LalrCell){ACT_ERR, 0};\n");
+	
+	fprintf(fp, "};\n\nint ParseLALR1(yyscan_t yyscanner, YYSTYPE *pResult)\n{\n");
+	fprintf(fp, "\tsize_t capacity = 256;\n\tint *stateStack = (int *)malloc(capacity * sizeof(int));\n\tYYSTYPE *valStack = (YYSTYPE *)malloc(capacity * sizeof(YYSTYPE));\n");
+	fprintf(fp, "\tif (!stateStack || !valStack) {\n\t\tfree(stateStack); free(valStack);\n\t\tyyerror(yyscanner, \"Out of memory (initial allocation)\");\n\t\treturn 0;\n\t}\n");
+	fprintf(fp, "\tint top = 0;\n\tYYSTYPE yylval = (YYSTYPE)0;\n\tstateStack[0] = 0;\n\tint lookahead = yylex(&yylval, yyscanner);\n");
+	
+	fprintf(fp, "\twhile (1) {\n");
+	// Gestione dinamica dello stack 
+	fprintf(fp, "\t\tif (top >= (int)capacity - 1) {\n");
+	fprintf(fp, "\t\t\tsize_t new_cap = capacity * 2;\n");
+	fprintf(fp, "\t\t\tint *tmp_ss = (int *)realloc(stateStack, new_cap * sizeof(int));\n");
+	fprintf(fp, "\t\t\tif (!tmp_ss) { free(stateStack); free(valStack); yyerror(yyscanner, \"Out of memory (realloc stateStack)\"); return 0; }\n");
+	fprintf(fp, "\t\t\tstateStack = tmp_ss;\n");
+	fprintf(fp, "\t\t\tYYSTYPE *tmp_vs = (YYSTYPE *)realloc(valStack, new_cap * sizeof(YYSTYPE));\n");
+	fprintf(fp, "\t\t\tif (!tmp_vs) { free(stateStack); free(valStack); yyerror(yyscanner, \"Out of memory (realloc valStack)\"); return 0; }\n");
+	fprintf(fp, "\t\t\tvalStack = tmp_vs;\n");
+	fprintf(fp, "\t\t\tcapacity = new_cap;\n");
+	fprintf(fp, "\t\t}\n");
+	
+	fprintf(fp, "\t\tint st = stateStack[top];\n\t\tLalrCell cell = (lookahead >= 0 && lookahead < LALR_NUM_TERMINALS) ? actionTable[st][lookahead] : (LalrCell){ACT_ERR, 0};\n");
 	fprintf(fp, "\t\tif (cell.type == ACT_SHIFT) { top++; stateStack[top] = cell.val; valStack[top] = yylval; lookahead = yylex(&yylval, yyscanner); }\n");
 	fprintf(fp, "\t\telse if (cell.type == ACT_REDUCE) {\n\t\t\tLalrProd p = aProductions[cell.val];\n\t\t\tYYSTYPE yyval = (p.rhsLen > 0) ? valStack[top - p.rhsLen + 1] : (YYSTYPE)0;\n\t\t\tswitch (cell.val) {\n");
-	for (int i = 0; i < pTables->countProds; i++) {
-		if (pTables->aProds[i].strAction && *pTables->aProds[i].strAction) {
+	
+	for (int i = 0; i < pTables->countProds; i++)
+	{
+		if (pTables->aProds[i].strAction && *pTables->aProds[i].strAction)
+		{
 			int rlen = pTables->aProds[i].count - 1;
 			char fmt[64]; snprintf(fmt, sizeof(fmt), "valStack[top - %d + %%d]", rlen);
 			char *tr = TranslateSemanticAction(pTables->aProds[i].strAction, rlen, "yyval", fmt);
@@ -1214,9 +1235,14 @@ void MakeLalrCFile(Tables *pTables, LalrTables *pLalr, const char *szFileName)
 			free(tr);
 		}
 	}
+	
 	fprintf(fp, "\t\t\t\tdefault: break;\n\t\t\t}\n\t\t\ttop -= p.rhsLen;\n\t\t\tint prevSt = stateStack[top];\n\t\t\ttop++; stateStack[top] = gotoTable[prevSt][p.lhs]; valStack[top] = yyval;\n\t\t}\n");
-	fprintf(fp, "\t\telse if (cell.type == ACT_ACCEPT) { if (pResult && top >= 1) *pResult = valStack[top]; return 1; }\n");
-	fprintf(fp, "\t\telse { yyerror(yyscanner, \"Syntax error\"); return 0; }\n\t}\n}\n");
+	
+	// Rilascio memoria in caso di ACCEPT 
+	fprintf(fp, "\t\telse if (cell.type == ACT_ACCEPT) { if (pResult && top >= 1) *pResult = valStack[top]; free(stateStack); free(valStack); return 1; }\n");
+	// Rilascio memoria in caso di errore 
+	fprintf(fp, "\t\telse { yyerror(yyscanner, \"Syntax error\"); free(stateStack); free(valStack); return 0; }\n\t}\n}\n");
+	
 	if (pTables->strEpilogue && *pTables->strEpilogue) fprintf(fp, "\n/* --- Epilogo --- */\n%s\n", pTables->strEpilogue);
 	fclose(fp);
 }

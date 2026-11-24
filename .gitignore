@@ -36,3 +36,7 @@ output/
 tags
 TAGS
 cscope.*
+
+# Directory temporanea dei test con input lunghi
+test_long_tmp/
+
