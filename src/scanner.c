@@ -96,8 +96,124 @@ int ReadFile(char *szFileName, ScannerParams *p)
 	return 1;
 }
 
+static char* ReadBalancedCodeBlock(ScannerParams *p, int isPrologue, int *pErrLine, int *pErrCol)
+{
+	size_t cap = 256;
+	size_t len = 0;
+	char *buf = (char*)malloc(cap);
+	if (!buf) return NULL;
+	buf[0] = '\0';
+
+	int depth = 1;
+	int inStr = 0;
+	int inChar = 0;
+	int inLineComment = 0;
+	int inBlockComment = 0;
+
+	while (1)
+	{
+		char c = *(p->szInput + p->pos);
+		if (c == '\0')
+		{
+			*pErrLine = p->line;
+			*pErrCol = p->column;
+			free(buf);
+			return NULL;
+		}
+
+		p->pos++;
+		p->column++;
+		if (c == '\n')
+		{
+			p->line++;
+			p->column = 1;
+			inLineComment = 0;
+		}
+
+		if (inLineComment)
+		{
+			/* continua */
+		}
+		else if (inBlockComment)
+		{
+			if (c == '*' && *(p->szInput + p->pos) == '/')
+			{
+				if (len + 3 >= cap) { cap *= 2; buf = (char*)realloc(buf, cap); }
+				buf[len++] = c;
+				buf[len++] = *(p->szInput + p->pos);
+				p->pos++;
+				p->column++;
+				inBlockComment = 0;
+				continue;
+			}
+		}
+		else if (inStr)
+		{
+			if (c == '\\' && *(p->szInput + p->pos) != '\0')
+			{
+				if (len + 3 >= cap) { cap *= 2; buf = (char*)realloc(buf, cap); }
+				buf[len++] = c;
+				buf[len++] = *(p->szInput + p->pos);
+				if (*(p->szInput + p->pos) == '\n') { p->line++; p->column = 1; }
+				else { p->column++; }
+				p->pos++;
+				continue;
+			}
+			if (c == '"') inStr = 0;
+		}
+		else if (inChar)
+		{
+			if (c == '\\' && *(p->szInput + p->pos) != '\0')
+			{
+				if (len + 3 >= cap) { cap *= 2; buf = (char*)realloc(buf, cap); }
+				buf[len++] = c;
+				buf[len++] = *(p->szInput + p->pos);
+				p->pos++;
+				p->column++;
+				continue;
+			}
+			if (c == '\'') inChar = 0;
+		}
+		else
+		{
+			if (c == '/' && *(p->szInput + p->pos) == '/') inLineComment = 1;
+			else if (c == '/' && *(p->szInput + p->pos) == '*') inBlockComment = 1;
+			else if (c == '"') inStr = 1;
+			else if (c == '\'') inChar = 1;
+			else if (isPrologue && c == '%' && *(p->szInput + p->pos) == '}')
+			{
+				p->pos++;
+				p->column++;
+				break;
+			}
+			else if (!isPrologue && c == '{')
+			{
+				depth++;
+			}
+			else if (!isPrologue && c == '}')
+			{
+				depth--;
+				if (depth == 0) break;
+			}
+		}
+
+		if (len + 2 >= cap)
+		{
+			cap *= 2;
+			char *tmp = (char*)realloc(buf, cap);
+			if (!tmp) { free(buf); return NULL; }
+			buf = tmp;
+		}
+		buf[len++] = c;
+	}
+
+	buf[len] = '\0';
+	return buf;
+}
+
 void GetNextToken(Token *pToken, ScannerParams *p)
 {
+	if (pToken->strAction) { free(pToken->strAction); pToken->strAction = NULL; }
 	States state = S0;
 	char c;
 	int k = 0;
@@ -165,6 +281,41 @@ void GetNextToken(Token *pToken, ScannerParams *p)
 			{
 				pToken->Type = T_SEMICOLON;
 				return;
+			}
+			else if ( c == '%' )
+			{
+				char nextC = *(p->szInput + p->pos);
+				if ( nextC == '{' )
+				{
+					p->pos++;
+					p->column++;
+					int errL = p->line, errC = p->column;
+					char *blk = ReadBalancedCodeBlock(p, 1, &errL, &errC);
+					if (!blk)
+					{
+						pToken->Type = T_SCAN_ERROR;
+						printf("Scanner error: Line %d Column %d: Expected '%%}', encountered EOF.\n", errL, errC);
+						return;
+					}
+					pToken->Type = T_PROLOGUE;
+					pToken->strAction = blk;
+					return;
+				}
+				else if ( nextC == '%' )
+				{
+					p->pos++;
+					p->column++;
+					pToken->Type = T_PERCENT_PERCENT;
+					strcpy(pToken->lexeme, "%%");
+					strcpy(pToken->szValue, "%%");
+					return;
+				}
+				else
+				{
+					pToken->Type = T_SCAN_ERROR;
+					printf("Scanner error: Line %d Column %d: Unexpected character '%%'.\n", p->line, p->column);
+					return;
+				}
 			}
 			else if ( c == '{' )
 			{
@@ -432,31 +583,24 @@ void GetNextToken(Token *pToken, ScannerParams *p)
 			}
 			break;
 		case S7:
-			while ( c != '}' )
+		{
+			/* Rimetti indietro il primo carattere letto dopo '{' */
+			p->pos--;
+			p->column--;
+			int errL = p->line, errC = p->column;
+			char *blk = ReadBalancedCodeBlock(p, 0, &errL, &errC);
+			if (!blk)
 			{
-				if ( c == '\0' )
-				{
-					pToken->Type = T_SCAN_ERROR;
-					printf("Scanner error: Line %d Column %d: Expected '}', encountered EOF.\n", pToken->line, pToken->column);
-					--p->pos;
-					return;
-				}
-
-				p->pos++;
-				c = *(p->szInput + p->pos);
-
-				p->column++;
-
-				if ( c == '\n' )
-				{
-					p->line++;
-					p->column = 1;
-				}
+				pToken->Type = T_SCAN_ERROR;
+				printf("Scanner error: Line %d Column %d: Expected '}', encountered EOF.\n", errL, errC);
+				return;
 			}
-
-			state = S0;
-
-			break;
+			pToken->Type = T_ACTION;
+			pToken->strAction = blk;
+			strcpy(pToken->lexeme, "{...}");
+			strcpy(pToken->szValue, "{...}");
+			return;
+		}
 		case S8:
 			if ( c == '/' ) // Comment until the end of the line
 			{

@@ -599,6 +599,7 @@ static void AppendProduction(Tables *pTables, int lhsId, const Symbol *rhs, int 
 	pTables->aProds =
 		(ArrayProduction *)realloc(pTables->aProds, (idx + 1) * sizeof(ArrayProduction));
 	pTables->aProds[idx].count = 1 + rhsCount;
+	pTables->aProds[idx].strAction = NULL;
 	pTables->aProds[idx].aSymbols = (Symbol *)malloc((1 + rhsCount) * sizeof(Symbol));
 	pTables->aProds[idx].aSymbols[0] = pTables->aNonTerminals[lhsId];
 	for (int i = 0; i < rhsCount; i++)
@@ -611,6 +612,7 @@ static void AppendProduction(Tables *pTables, int lhsId, const Symbol *rhs, int 
 static void RemoveProductionAt(Tables *pTables, int prodIdx)
 {
 	free(pTables->aProds[prodIdx].aSymbols);
+	free(pTables->aProds[prodIdx].strAction);
 	for (int i = prodIdx; i < pTables->countProds - 1; i++)
 	{
 		pTables->aProds[i] = pTables->aProds[i + 1];
@@ -1157,91 +1159,64 @@ void MakeLalrHtmlFile(Tables *pTables, LalrTables *pLalr, ConversionReport *pRep
 
 void MakeLalrCFile(Tables *pTables, LalrTables *pLalr, const char *szFileName)
 {
-	if (!pLalr->isLALR1)
-	{
-		printf("Unable to generate the C parser: the grammar has LALR(1) conflicts.\n");
-		return;
-	}
+	if (!pLalr->isLALR1) { printf("Impossibile generare il parser C: conflitti LALR(1).\n"); return; }
 	FILE *fp = fopen(szFileName, "wt");
-	if (!fp)
-	{
-		printf("Error opening file %s.\n", szFileName);
-		return;
+	if (!fp) { printf("Errore nell'apertura del file %s.\n", szFileName); return; }
+	int numT = pTables->countTerminals, numNT = pTables->countNonTerminals;
+
+	fprintf(fp, "/* Parser LALR(1) con azioni semantiche - vlcGrammarTools */\n#include <stdio.h>\n#include <stdlib.h>\n\n");
+	if (pTables->strPrologue && *pTables->strPrologue)
+		fprintf(fp, "/* --- Prologo --- */\n%s\n\n", pTables->strPrologue);
+
+	fprintf(fp, "#ifndef YYSTYPE\n#define YYSTYPE double\n#endif\nYYSTYPE yylval;\nint yylex(void);\nvoid yyerror(const char *s);\n\n");
+	fprintf(fp, "#define LALR_NUM_STATES %d\n#define LALR_NUM_TERMINALS %d\n#define LALR_NUM_NONTERM %d\n#define LALR_NUM_PRODUCTIONS %d\n#define LALR_TOKEN_DOLLAR %d\n\n",
+		pLalr->numStates, numT + 1, numNT, pTables->countProds, numT);
+
+	fprintf(fp, "enum LalrTokens {\n");
+	for (int t = 0; t < numT; t++) {
+		const char *lex = pTables->aTerminals[t].strLexeme;
+		if ((*lex >= 'A' && *lex <= 'Z') || (*lex >= 'a' && *lex <= 'z') || *lex == '_') fprintf(fp, "\tTOK_%s = %d,\n", lex, t);
+		else fprintf(fp, "\tTOK_SYM_%d = %d, /* %s */\n", t, t, lex);
 	}
-	int numT = pTables->countTerminals;
-	int numNT = pTables->countNonTerminals;
-	fprintf(fp, "/* Automatically generated LALR(1) parser - Vincenzo Lo Cicero */\n");
-	fprintf(fp, "#include <stdio.h>\n\n");
-	fprintf(fp, "#define LALR_NUM_STATES      %d\n", pLalr->numStates);
-	fprintf(fp, "#define LALR_NUM_TERMINALS   %d /* Including '$' */\n", numT + 1);
-	fprintf(fp, "#define LALR_NUM_NONTERM     %d\n", numNT);
-	fprintf(fp, "#define LALR_NUM_PRODUCTIONS %d\n", pTables->countProds);
-	fprintf(fp, "#define LALR_TOKEN_DOLLAR    %d\n\n", numT);
-	fprintf(fp, "typedef enum { ACT_ERR = 0, ACT_SHIFT = 1, ACT_REDUCE = 2, ACT_ACCEPT = 3 } "
-				"ActionType;\n");
-	fprintf(fp, "typedef struct { ActionType type; int val; } LalrCell;\n");
-	fprintf(fp, "typedef struct { int lhs; int rhsLen; } LalrProd;\n\n");
-	fprintf(fp, "const LalrProd aProductions[LALR_NUM_PRODUCTIONS] = {\n");
+	fprintf(fp, "\tTOK_EOF = %d\n};\n\n", numT);
+
+	fprintf(fp, "typedef enum { ACT_ERR = 0, ACT_SHIFT = 1, ACT_REDUCE = 2, ACT_ACCEPT = 3 } ActionType;\n");
+	fprintf(fp, "typedef struct { ActionType type; int val; } LalrCell;\ntypedef struct { int lhs; int rhsLen; } LalrProd;\n\n");
+	fprintf(fp, "static const LalrProd aProductions[LALR_NUM_PRODUCTIONS] = {\n");
 	for (int i = 0; i < pTables->countProds; i++)
-	{
-		fprintf(fp, "\t{ %d, %d }%s\n", pTables->aProds[i].aSymbols[0].id,
-				pTables->aProds[i].count - 1, (i < pTables->countProds - 1) ? "," : "");
-	}
-	fprintf(fp, "};\n\n");
-	fprintf(fp, "const LalrCell actionTable[LALR_NUM_STATES][LALR_NUM_TERMINALS] = {\n");
-	for (int st = 0; st < pLalr->numStates; st++)
-	{
+		fprintf(fp, "\t{ %d, %d }%s\n", pTables->aProds[i].aSymbols[0].id, pTables->aProds[i].count - 1, (i < pTables->countProds - 1) ? "," : "");
+	fprintf(fp, "};\n\nstatic const LalrCell actionTable[LALR_NUM_STATES][LALR_NUM_TERMINALS] = {\n");
+	for (int st = 0; st < pLalr->numStates; st++) {
 		fprintf(fp, "\t{ ");
-		for (int t = 0; t <= numT; t++)
-		{
-			LalrAction *act = pLalr->actionTable[st][t];
-			if (!act)
-				fprintf(fp, "{ACT_ERR, 0}");
-			else
-				fprintf(fp, "{%d, %d}", (int)act->type, act->value);
-			if (t < numT)
-				fprintf(fp, ", ");
+		for (int t = 0; t <= numT; t++) {
+			LalrAction *a = pLalr->actionTable[st][t];
+			if (!a) fprintf(fp, "{ACT_ERR, 0}"); else fprintf(fp, "{%d, %d}", (int)a->type, a->value);
+			if (t < numT) fprintf(fp, ", ");
 		}
 		fprintf(fp, " }%s\n", (st < pLalr->numStates - 1) ? "," : "");
 	}
-	fprintf(fp, "};\n\n");
-	fprintf(fp, "const int gotoTable[LALR_NUM_STATES][LALR_NUM_NONTERM] = {\n");
-	for (int st = 0; st < pLalr->numStates; st++)
-	{
+	fprintf(fp, "};\n\nstatic const int gotoTable[LALR_NUM_STATES][LALR_NUM_NONTERM] = {\n");
+	for (int st = 0; st < pLalr->numStates; st++) {
 		fprintf(fp, "\t{ ");
-		for (int nt = 0; nt < numNT; nt++)
-		{
-			fprintf(fp, "%3d", pLalr->gotoTable[st][nt]);
-			if (nt < numNT - 1)
-				fprintf(fp, ", ");
-		}
+		for (int nt = 0; nt < numNT; nt++) { fprintf(fp, "%3d", pLalr->gotoTable[st][nt]); if (nt < numNT - 1) fprintf(fp, ", "); }
 		fprintf(fp, " }%s\n", (st < pLalr->numStates - 1) ? "," : "");
 	}
-	fprintf(fp, "};\n\n");
-	fprintf(fp, "int ParseLALR1(const int *tokens, int numTokens)\n"
-				"{\n"
-				"int stateStack[2048];\n"
-				"    int top = 0;\n"
-				"int ip = 0;\n"
-				"stateStack[0] = 0;\n\n"
-				"    while (1) {\n"
-				"int state = stateStack[top];\n"
-				"int lookahead = (ip < numTokens) ? tokens[ip] : LALR_TOKEN_DOLLAR;\n"
-				"LalrCell cell = actionTable[state][lookahead];\n\n"
-				"if (cell.type == ACT_SHIFT) {\n"
-				"stateStack[++top] = cell.val;\n"
-				"            ip++;\n"
-				"} else if (cell.type == ACT_REDUCE) {\n"
-				"LalrProd p = aProductions[cell.val];\n"
-				"top -= p.rhsLen;\n"
-				"int prevState = stateStack[top];\n"
-				"stateStack[++top] = gotoTable[prevState][p.lhs];\n"
-				"} else if (cell.type == ACT_ACCEPT) {\n"
-				"            return 1;\n"
-				"        } else {\n"
-				"            return 0;\n"
-				"        }\n"
-				"    }\n"
-				"}\n");
+	fprintf(fp, "};\n\nint ParseLALR1(YYSTYPE *pResult)\n{\n\tint stateStack[1024], top = 0;\n\tYYSTYPE valStack[1024];\n\tstateStack[0] = 0;\n\tint lookahead = yylex();\n");
+	fprintf(fp, "\twhile (1) {\n\t\tint st = stateStack[top];\n\t\tLalrCell cell = (lookahead >= 0 && lookahead < LALR_NUM_TERMINALS) ? actionTable[st][lookahead] : (LalrCell){ACT_ERR, 0};\n");
+	fprintf(fp, "\t\tif (cell.type == ACT_SHIFT) { top++; stateStack[top] = cell.val; valStack[top] = yylval; lookahead = yylex(); }\n");
+	fprintf(fp, "\t\telse if (cell.type == ACT_REDUCE) {\n\t\t\tLalrProd p = aProductions[cell.val];\n\t\t\tYYSTYPE yyval = (p.rhsLen > 0) ? valStack[top - p.rhsLen + 1] : (YYSTYPE)0;\n\t\t\tswitch (cell.val) {\n");
+	for (int i = 0; i < pTables->countProds; i++) {
+		if (pTables->aProds[i].strAction && *pTables->aProds[i].strAction) {
+			int rlen = pTables->aProds[i].count - 1;
+			char fmt[64]; snprintf(fmt, sizeof(fmt), "valStack[top - %d + %%d]", rlen);
+			char *tr = TranslateSemanticAction(pTables->aProds[i].strAction, rlen, "yyval", fmt);
+			fprintf(fp, "\t\t\t\tcase %d: {\n%s\n\t\t\t\t\tbreak;\n\t\t\t\t}\n", i, tr ? tr : "");
+			free(tr);
+		}
+	}
+	fprintf(fp, "\t\t\t\tdefault: break;\n\t\t\t}\n\t\t\ttop -= p.rhsLen;\n\t\t\tint prevSt = stateStack[top];\n\t\t\ttop++; stateStack[top] = gotoTable[prevSt][p.lhs]; valStack[top] = yyval;\n\t\t}\n");
+	fprintf(fp, "\t\telse if (cell.type == ACT_ACCEPT) { if (pResult && top >= 1) *pResult = valStack[top]; return 1; }\n");
+	fprintf(fp, "\t\telse { yyerror(\"Syntax error\"); return 0; }\n\t}\n}\n");
+	if (pTables->strEpilogue && *pTables->strEpilogue) fprintf(fp, "\n/* --- Epilogo --- */\n%s\n", pTables->strEpilogue);
 	fclose(fp);
 }

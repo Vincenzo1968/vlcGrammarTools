@@ -1,3 +1,4 @@
+#define _POSIX_C_SOURCE 200809L
 /*
    Copyright (C) 2013 Vincenzo Lo Cicero
 
@@ -179,18 +180,34 @@ int Parse(char *szFileName, Tables *pTables)
 {
 	int ret;
 	ParserParams myParserParams;
+	memset(&myParserParams, 0, sizeof(ParserParams));
 	
 	if ( !InitParser(&myParserParams) )
 		return 0;
 		
-	if ( !ReadFile(szFileName, &(myParserParams.sp)) ) { FreeScanner(&(myParserParams.sp)); FreeParser(&myParserParams); return 0; }
+	if ( !ReadFile(szFileName, &(myParserParams.sp)) ) { FreeScanner(&(myParserParams.sp)); free(myParserParams.myToken.strAction); myParserParams.myToken.strAction = NULL; FreeParser(&myParserParams); return 0; }
 					
 	GetNextToken(&(myParserParams.myToken), &(myParserParams.sp));
 
 	myParserParams.pTables = pTables;
 
+	if ( myParserParams.myToken.Type == T_PROLOGUE )
+	{
+		if ( !pTables->bIgnoreActions && myParserParams.myToken.strAction )
+			pTables->strPrologue = strdup(myParserParams.myToken.strAction);
+		GetNextToken(&(myParserParams.myToken), &(myParserParams.sp));
+	}
+	if ( myParserParams.myToken.Type == T_PERCENT_PERCENT )
+		GetNextToken(&(myParserParams.myToken), &(myParserParams.sp));
+
 	while ( myParserParams.myToken.Type != T_EOF )
 	{
+		if ( myParserParams.myToken.Type == T_PERCENT_PERCENT )
+		{
+			if ( !pTables->bIgnoreActions )
+				pTables->strEpilogue = strdup(myParserParams.sp.szInput + myParserParams.sp.pos);
+			break;
+		}
 		ret = prods_list(&myParserParams);
 		if ( !ret )
 		{
@@ -203,7 +220,7 @@ int Parse(char *szFileName, Tables *pTables)
 	if ( myParserParams.numErrors || myParserParams.numWarnings )
 		printf("Errors: %d\nWarnings: %d\n", myParserParams.numErrors, myParserParams.numWarnings);
 
-	FreeParser(&myParserParams);
+	free(myParserParams.myToken.strAction); myParserParams.myToken.strAction = NULL; FreeParser(&myParserParams);
 	
 	return ret;
 }
@@ -301,8 +318,30 @@ int rhs(ParserParams *pp)
 	if ( !symbols_list(pp) )
 		return 0;
 
-	while (pp->myToken.Type == T_VERTBAR)
+	while ( pp->myToken.Type == T_VERTBAR || pp->myToken.Type == T_ACTION )
 	{
+		char *pendingAction = NULL;
+		if ( pp->myToken.Type == T_ACTION )
+		{
+			if ( !pp->pTables->bIgnoreActions && pp->myToken.strAction )
+				pendingAction = strdup(pp->myToken.strAction);
+			GetNextToken(&(pp->myToken), &(pp->sp));
+			if ( pp->myToken.Type != T_VERTBAR && pp->myToken.Type != T_SEMICOLON )
+			{
+				printf("Line %d Column %d: Expected '|' or ';' after action.\n", pp->myToken.line, pp->myToken.column);
+				free(pendingAction);
+				return 0;
+			}
+		}
+		if ( pp->myToken.Type == T_SEMICOLON )
+		{
+			if ( pendingAction )
+			{
+				free(pp->myToken.strAction);
+				pp->myToken.strAction = pendingAction;
+			}
+			break;
+		}
 		if ( !pp->numErrors )
 		{
 			id = pp->stack[0];
@@ -365,10 +404,16 @@ int rhs(ParserParams *pp)
 				id = pp->stack[0];
 				pp->pTables->aProds[x].aSymbols[0] = pp->pTables->aNonTerminals[id - 10000];
 
+				pp->pTables->aProds[x].strAction = pendingAction;
+				pendingAction = NULL;
+				if ( !pp->pTables->bIgnoreActions && pp->myToken.strAction )
+					pp->pTables->aProds[x].strAction = strdup(pp->myToken.strAction);
 				pp->pTables->countProds++;
 			}
 			else // Production already present
 			{
+				free(pendingAction);
+				pendingAction = NULL;
 				printf("Warning: The production \"%s\" is already defined. Duplicates are discarded.\n", pp->strTemp);
 				pp->numWarnings++;
 				pp->top = 0;

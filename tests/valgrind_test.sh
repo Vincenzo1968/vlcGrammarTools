@@ -59,6 +59,10 @@ run_vg "Lexical/Syntax error handling (grammar_003.grm)" ../grammar_src/grammar_
 run_vg "Syntax error handling (grammar_011.grm)" ../grammar_src/grammar_011.grm
 run_vg "Unsupported grammar handling (grammar_023.grm)" ../grammar_src/grammar_023.grm
 
+# 5. Semantic Actions (with and without --make_c_parser)
+run_vg "Semantic actions ignored without --make_c_parser (calc_actions.grm)" -o vg_test_no_c ../grammar_src/calc_actions.grm
+run_vg "Semantic actions C parser generation (calc_actions.grm)" --make_c_parser -o vg_test_with_c ../grammar_src/calc_actions.grm
+
 # Cleanup temporary output artifacts
 rm -f ../output/vg_test_* /tmp/vg_out.txt
 

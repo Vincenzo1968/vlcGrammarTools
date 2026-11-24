@@ -170,6 +170,9 @@ int main(int argc, char **argv)
     myopt_AddOption(optParser, idGroupGeneral, 'o', "output",
                     "Output file name prefix (without extension)",
                     false, MOB_OVERRIDE, 1, 1, "string");
+    myopt_AddOption(optParser, idGroupGeneral, 0, "make_c_parser",
+                    "Generate the C parser source file (including semantic actions)",
+                    false, MOB_OVERRIDE, 0, 0, "");
 
     /* Group 1: Conversion modes (mutually exclusive, optional) */
     idGroupMode = myopt_AddGroup(optParser, "Grammar conversion", true, false);
@@ -236,12 +239,15 @@ int main(int argc, char **argv)
     bool optConvert = (idConvert >= 0 && optParser->arrayOptArgs[idConvert].countOccurrences > 0);
     bool optToLL1   = (idToLL1   >= 0 && optParser->arrayOptArgs[idToLL1].countOccurrences > 0);
     bool optToLALR1 = (idToLALR1 >= 0 && optParser->arrayOptArgs[idToLALR1].countOccurrences > 0);
+    int32_t idMakeC = myopt_LookupLong(optParser, "make_c_parser");
+    bool optMakeCParser = (idMakeC >= 0 && optParser->arrayOptArgs[idMakeC].countOccurrences > 0);
 
     MakeOutputNames(szFileInput, szCustomOut, szFileOutput_Html, szFileOutput_C);
 
     /* --- 1. GRAMMAR PARSING --- */
     Tables tables;
     InitTables(&tables);
+    tables.bIgnoreActions = optMakeCParser ? 0 : 1;
     MakeArrays(&tables);
 
     int ret = Parse((char *)szFileInput, &tables);
@@ -312,8 +318,12 @@ int main(int argc, char **argv)
         }
         PrintTables(&tables);
         MakeHtmlFileWithReport(&tables, &report, szFileOutput_Html);
-        MakeCFile(&tables, szFileOutput_C);
-        printf("Files '%s' and '%s' generated (LL(1) mode).\n", szFileOutput_Html, szFileOutput_C);
+        if (optMakeCParser) {
+            MakeCFile(&tables, szFileOutput_C);
+            printf("Files '%s' and '%s' generated (LL(1) mode).\n", szFileOutput_Html, szFileOutput_C);
+        } else {
+            printf("File '%s' generated (LL(1) mode). Use --make_c_parser to generate the C parser.\n", szFileOutput_Html);
+        }
     } else {
         /* Target: LALR(1) */
         if (isLL1 && (optConvert || optToLALR1)) {
@@ -325,8 +335,12 @@ int main(int argc, char **argv)
                               &tables);
         }
         MakeLalrHtmlFile(&tables, &lalr, &report, szFileOutput_Html);
-        MakeLalrCFile(&tables, &lalr, szFileOutput_C);
-        printf("Files '%s' and '%s' generated (LALR(1) mode).\n", szFileOutput_Html, szFileOutput_C);
+        if (optMakeCParser) {
+            MakeLalrCFile(&tables, &lalr, szFileOutput_C);
+            printf("Files '%s' and '%s' generated (LALR(1) mode).\n", szFileOutput_Html, szFileOutput_C);
+        } else {
+            printf("File '%s' generated (LALR(1) mode). Use --make_c_parser to generate the C parser.\n", szFileOutput_Html);
+        }
     }
 
     FreeConversionReport(&report);

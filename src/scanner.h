@@ -46,6 +46,9 @@ typedef enum tagTokenType
 	T_EOF,
 	T_COLON,			// ':'
 	T_SEMICOLON,		// ';'
+	T_ACTION,		// '{ ... }'
+	T_PROLOGUE,		// '%{ ... %}'
+	T_PERCENT_PERCENT,	// '%%'
 	T_VERTBAR,			// '|'
 	T_TERMINAL,
 	T_NONTERMINAL
@@ -61,7 +64,8 @@ typedef struct tagToken
 
 	int line;
 	int column;
-}Token;
+	char *strAction;
+} Token;
 
 typedef struct tagScannerParams
 {

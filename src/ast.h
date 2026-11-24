@@ -76,6 +76,7 @@ typedef struct tagArrayProduction
 {
 	int count;
 	Symbol *aSymbols;
+	char *strAction;
 }ArrayProduction;
 
 typedef ArrayProduction Item; // for QuickSort
@@ -99,6 +100,9 @@ typedef struct tagTables
 	ProblemList *problemList;
 
 	ConstraintsList *constraintsList;
+	char *strPrologue;
+	char *strEpilogue;
+	int bIgnoreActions;
 } Tables, *pTables;
 
 void FreeConstraintsList(ConstraintsList *first);
@@ -141,6 +145,8 @@ void MakeTableLL(Tables *pTables);
 
 void MakeHtmlFile(Tables *pTables, const char *szFileName);
 
+char* TranslateSemanticAction(const char *rawCode, int rhsLen, const char *lhsExpr, const char *rhsFmt);
+char* TranslateSemanticAction(const char *rawCode, int rhsLen, const char *lhsExpr, const char *rhsFmt);
 void MakeCFile(Tables *pTables, const char *szFileName);
 
 int SimulateLL1(Tables *pTables, int *tokens, int numTokens);

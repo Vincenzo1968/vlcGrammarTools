@@ -12,6 +12,16 @@
 - **C Code Generation**: Outputs ready-to-use C parsing tables and driver routines for both LL(1) and LALR(1) grammars.
 - **Safe Output Management**: Automatically saves generated `.html` and `.c` files into the `../output` directory, appending `(2)`, `(3)`, etc. instead of overwriting existing files.
 
+## Semantic Actions (Bison-Style)
+
+When `--make_c_parser` is specified, `vlcGrammarTools` supports optional C semantic actions embedded in `.grm` files (if `--make_c_parser` is omitted, semantic actions are ignored and only the HTML report is generated):
+
+- **Prologue (`%{ ... %}`)**: Optional C headers, macros (such as `#define YYSTYPE double`), and helper declarations at the top of the file.
+- **Rule Actions (`{ ... }`)**: Optional C blocks at the end of any production alternative using `$$` for the left-hand side value and `$1`, `$2`, ..., `$n` for right-hand side symbols.
+- **Epilogue (`%% ...`)**: Optional C code (`yylex()`, `yyerror()`, `main()`) placed after a trailing `%%` separator.
+
+See [`grammar_src/calc_actions.grm`](grammar_src/calc_actions.grm) for a complete working calculator example.
+
 ## Building from Source (GNU Autotools)
 
 ```bash
@@ -36,6 +46,7 @@ Run the executable from the `src/` directory (or specify the path to your gramma
 | `-v` | `--version` | Display program version and exit |
 | `-i` | `--info` | Display license information and exit |
 | `-o <name>` | `--output <name>` | Set custom output base filename (without extension) |
+| | `--make_c_parser` | Generate the C parser source file (including semantic actions) |
 | `-c` | `--convert` | Automatically convert `LL(1)` ↔ `LALR(1)` to the opposite format |
 | | `--to-ll1` | Force conversion and code generation for an **LL(1)** parser |
 | | `--to-lalr1` | Force conversion and code generation for an **LALR(1)** parser |
