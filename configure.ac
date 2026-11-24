@@ -5,8 +5,9 @@ AM_INIT_AUTOMAKE([foreign -Wall -Werror])
 AC_CONFIG_SRCDIR([src/main.c])
 AC_CONFIG_HEADERS([config.h])
 
+: ${CFLAGS="-O3"}
 AC_PROG_CC
-CFLAGS="$CFLAGS -std=c11"
+#CFLAGS="$CFLAGS -std=c11"
 
 AC_SEARCH_LIBS([pow], [m])
 

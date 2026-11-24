@@ -24,13 +24,13 @@
 #define SYMTAB_H
 
 #define HT_SIZE 251
-//#define HT_SIZE 509
-//#define HT_SIZE 1021
-//#define HT_SIZE 2039
-//#define HT_SIZE 4093
-//#define HT_SIZE 8191
-//#define HT_SIZE 16381
-//#define HT_SIZE 32749
+// #define HT_SIZE 509
+// #define HT_SIZE 1021
+// #define HT_SIZE 2039
+// #define HT_SIZE 4093
+// #define HT_SIZE 8191
+// #define HT_SIZE 16381
+// #define HT_SIZE 32749
 
 typedef struct tagHashTable
 {

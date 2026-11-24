@@ -174,7 +174,7 @@ void GetNextToken(Token *pToken, ScannerParams *p)
 			{
 				state = S8;
 			}
-			else if ( c == '\'' ) // Terminal char literal
+			else if ( c == '\'' ) // Terminal character literal
 			{
 				state = S2;
 			}
@@ -262,7 +262,7 @@ void GetNextToken(Token *pToken, ScannerParams *p)
 				{
 					if ( (pToken->lexeme[0] >= 'a' && pToken->lexeme[0] <= 'z') )
 					{
-						pToken->Type = T_NONTERMINAL; // Non-terminals begin with a lowercase character
+						pToken->Type = T_NONTERMINAL; // Non-terminals begin with a lowercase character.
 					}
 					else
 					{
@@ -277,7 +277,7 @@ void GetNextToken(Token *pToken, ScannerParams *p)
 					}
 					else
 					{
-						pToken->Type = T_NONTERMINAL; // Non-terminals begin with a lowercase character
+						pToken->Type = T_NONTERMINAL; // Non-terminals begin with a lowercase character.
 					}
 				}
 
@@ -341,7 +341,7 @@ void GetNextToken(Token *pToken, ScannerParams *p)
 				}
 
 				pToken->Type = T_SCAN_ERROR;
-				printf("Scanner Error: Line %d Column %d: Invalid character %c\nExpexted: newline, tab, or backslash\n", pToken->line, pToken->column, c);
+				printf("Scanner Error: Line %d Column %d: Invalid character %c\nExpected: newline, tab, or backslash\n", pToken->line, pToken->column, c);
 				return;
 			}
 			break;

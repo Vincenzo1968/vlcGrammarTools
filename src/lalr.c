@@ -515,7 +515,7 @@ int BuildLALR1(Tables *pTables, LalrTables *pLalr)
 	
 	if (pLalr->numStates <= 0)
 	{
-		return 0;   // o gestisci l'errore come fai altrove
+		return 0;   // or handle the error as you do elsewhere
 	}
 	size_t nStates = (size_t)pLalr->numStates;
 
@@ -881,32 +881,32 @@ int ConvertLALRtoLL1(Tables *pTables, ConversionReport *pRep)
 	strncpy(pRep->sourceType, "LALR(1)", sizeof(pRep->sourceType) - 1);
 	strncpy(pRep->targetType, "LL(1)",   sizeof(pRep->targetType) - 1);
 
-	AddConversionStep(pRep, "1. Grammatica LALR(1) originale",
-					  "Grammatica di partenza prima delle trasformazioni top-down.", pTables);
+	AddConversionStep(pRep, "1. Original LALR(1) grammar",
+					  "Initial grammar before top-down transformations.", pTables);
 	ResetLLAnalysisData(pTables);
 	if (EliminateLeftRecursion(pTables))
 	{
-		AddConversionStep(pRep, "2. Eliminazione della Ricorsione Sinistra",
-						  "Rimossa la ricorsione sinistra (immediata e indiretta) introducendo "
-						  "nuovi simboli non-terminali ausiliari (_p).",
+		AddConversionStep(pRep, "2. Elimination of Left Recursion",
+						  "Left recursion (immediate and indirect) removed by introducing "
+						  "new auxiliary non-terminal symbols (_p).",
 						  pTables);
 	}
 	else
 	{
-		AddConversionStep(pRep, "2. Controllo Ricorsione Sinistra",
-						  "Nessuna ricorsione sinistra rilevata nella grammatica.", NULL);
+		AddConversionStep(pRep, "2. Left Recursion Check",
+						  "No left recursion detected in the grammar.", NULL);
 	}
 	if (PerformLeftFactoring(pTables))
 	{
-		AddConversionStep(pRep, "3. Fattorizzazione a Sinistra (Left Factoring)",
-						  "Estratti i prefissi comuni tra produzioni alternative per eliminare i "
-						  "conflitti FIRST/FIRST.",
+		AddConversionStep(pRep, "3. Left Factoring",
+						  "Extracted common prefixes between alternative productions to eliminate "
+						  "FIRST/FIRST conflicts.",
 						  pTables);
 	}
 	else
 	{
-		AddConversionStep(pRep, "3. Controllo Left Factoring",
-						  "Nessun prefisso comune da fattorizzare.", NULL);
+		AddConversionStep(pRep, "3. Left Factoring Check",
+						  "No common prefix to factorize.", NULL);
 	}
 	MakeNullableSet(pTables);
 	MakeFirstSets(pTables);
@@ -915,18 +915,18 @@ int ConvertLALRtoLL1(Tables *pTables, ConversionReport *pRep)
 	if (pTables->problemList == NULL)
 	{
 		pRep->success = 1;
-		AddConversionStep(pRep, "4. Verifica Tabella LL(1) completata",
-						  "La grammatica trasformata e' priva di conflitti ed e' ora una "
-						  "grammatica LL(1) valida.",
+		AddConversionStep(pRep, "4. LL(1) Table verification completed",
+						  "The transformed grammar is free of conflicts and is now a "
+						  "valid LL(1) grammar.",
 						  NULL);
 		return 1;
 	}
 	else
 	{
 		pRep->success = 0;
-		AddConversionStep(pRep, "4. Verifica Tabella LL(1) fallita",
-						  "Permangono conflitti nella tabella LL(1) (il linguaggio sottostante non "
-						  "e' strettamente LL(1)).",
+		AddConversionStep(pRep, "4. LL(1) Table check failed",
+						  "Conflicts remain in the LL(1) table (the underlying language is not "
+						  "strictly LL(1)).",
 						  NULL);
 		return 0;
 	}
@@ -936,48 +936,48 @@ static void WriteHtmlHeader(FILE *fp, const char *pageTitle)
 {
     fprintf(
         fp,
-        "\n<html lang='it'>\n<head>\n"
+        "\n<html lang='en'> \n<head> \n"
         "<meta charset='UTF-8'>\n"
         "<meta name='viewport' content='width=device-width, initial-scale=1.0'>\n"
-        "<title>%s - Vincenzo Lo Cicero</title>\n"
+        "<title>%s - Vincenzo Lo Cicero</title> \n"
         "<style>\n"
-        "  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, "
-        "Helvetica, Arial, sans-serif; background-color: #f4f6f9; color: #1e293b; margin: "
+        "body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,"
+        "Helvetica, Arial, sans-serif; background-color: #f4f6f9; color: #1e293b; margin:"
         "0; padding: 24px; line-height: 1.5; }\n"
-        "  .container { max-width: 1280px; margin: 0 auto; }\n"
-        "  h1 { font-size: 1.6rem; color: #0f172a; margin-bottom: 24px; border-bottom: 2px "
+        ".container { max-width: 1280px; margin: 0 auto; }\n"
+        "h1 { font-size: 1.6rem; color: #0f172a; margin-bottom: 24px; border-bottom: 2px"
         "solid #cbd5e1; padding-bottom: 10px; }\n"
-        "  .card { background: #ffffff; border-radius: 8px; box-shadow: 0 1px 3px "
+        ".card { background: #ffffff; border-radius: 8px; box-shadow: 0 1px 3px"
         "rgba(0,0,0,0.1); padding: 20px 24px; margin-bottom: 24px; overflow-x: auto; }\n"
-        "  .card h2 { font-size: 1.15rem; color: #334155; margin-top: 0; margin-bottom: "
+        ".card h2 { font-size: 1.15rem; color: #334155; margin-top: 0; margin-bottom:"
         "14px; border-left: 4px solid #2563eb; padding-left: 10px; }\n"
-        "  .step-box { background: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px "
+        ".step-box { background: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px"
         "solid #0284c7; border-radius: 6px; padding: 14px 18px; margin-bottom: 14px; }\n"
-        "  .step-box h3 { margin: 0 0 6px 0; font-size: 1rem; color: #0369a1; }\n"
-        "  .step-box p { margin: 0 0 8px 0; font-size: 0.92rem; color: #475569; }\n"
-        "  pre.gram-snap { background: #0f172a; color: #e2e8f0; padding: 12px; "
-        "border-radius: 6px; font-family: 'Consolas', 'Monaco', monospace; font-size: "
+        ".step-box h3 { margin: 0 0 6px 0; font-size: 1rem; color: #0369a1; }\n"
+        ".step-box p { margin: 0 0 8px 0; font-size: 0.92rem; color: #475569; }\n"
+        "pre.gram-snap { background: #0f172a; color: #e2e8f0; padding: 12px;"
+        "border-radius: 6px; font-family: 'Consolas', 'Monaco', monospace; font-size:"
         "0.88rem; overflow-x: auto; margin: 0; }\n"
-        "  table.grid-table { border-collapse: collapse; width: 100%%; font-size: 0.88rem; "
+        "table.grid-table { border-collapse: collapse; width: 100%%; font-size: 0.88rem;"
         "}\n"
-        "  table.grid-table th, table.grid-table td { border: 1px solid #cbd5e1; padding: "
+        "table.grid-table th, table.grid-table td { border: 1px solid #cbd5e1; padding:"
         "7px 10px; }\n"
-        "  table.grid-table th { background-color: #1e293b; color: #ffffff; font-weight: "
+        "table.grid-table th { background-color: #1e293b; color: #ffffff; font-weight:"
         "600; text-align: center; }\n"
-        "  table.grid-table tr:nth-child(even) { background-color: #f8fafc; }\n"
-        "  .mono { font-family: 'Consolas', 'Monaco', monospace; }\n"
-        "  .cell-shift { background-color: #eff6ff; color: #1d4ed8; font-weight: 600; "
+        "table.grid-table tr:nth-child(even) { background-color: #f8fafc; }\n"
+        ".mono { font-family: 'Consolas', 'Monaco', monospace; }\n"
+        ".cell-shift { background-color: #eff6ff; color: #1d4ed8; font-weight: 600;"
         "text-align: center; }\n"
-        "  .cell-reduce { background-color: #f0fdf4; color: #15803d; font-weight: 600; "
+        ".cell-reduce { background-color: #f0fdf4; color: #15803d; font-weight: 600;"
         "text-align: center; }\n"
-        "  .cell-accept { background-color: #fef9c3; color: #854d0e; font-weight: bold; "
+        ".cell-accept { background-color: #fef9c3; color: #854d0e; font-weight: bold;"
         "text-align: center; }\n"
-        "  .cell-goto { background-color: #f1f5f9; color: #0f172a; font-weight: 600; "
+        ".cell-goto { background-color: #f1f5f9; color: #0f172a; font-weight: 600;"
         "text-align: center; }\n"
-        "  .cell-conflict { background-color: #fef2f2; color: #b91c1c; font-weight: bold; "
+        ".cell-conflict { background-color: #fef2f2; color: #b91c1c; font-weight: bold;"
         "text-align: center; }\n"
-        "  .cell-err { color: #cbd5e1; text-align: center; }\n"
-        "  .badge-la { background: #e0e7ff; color: #3730a3; padding: 2px 6px; "
+        ".cell-err { color: #cbd5e1; text-align: center; }\n"
+        ".badge-la { background: #e0e7ff; color: #3730a3; padding: 2px 6px;"
         "border-radius: 4px; font-size: 0.82rem; }\n"
         "</style>\n</head>\n<body>\n"
         "<div class='container'>\n<h1>%s - Vincenzo Lo Cicero</h1>\n",
@@ -988,14 +988,14 @@ static void WriteConversionReportSection(FILE *fp, const ConversionReport *pRep)
 {
     if (!pRep || !pRep->converted)
         return;
-    fprintf(fp, "<div class='card'>\n<h2>Report Conversione: %s → %s</h2>\n",
+    fprintf(fp, "<div class='card'>\n<h2>Conversion Report: %s → %s</h2>\n",
             pRep->sourceType, pRep->targetType);
     for (const ConversionStep *s = pRep->steps; s != NULL; s = s->next)
     {
         fprintf(fp, "<div class='step-box'>\n<h3>%s</h3>\n<p>%s</p>\n",
                 s->title, s->description);
         if (s->grammarSnapshot)
-            fprintf(fp, "<pre class='gram-snap'>%s</pre>\n", s->grammarSnapshot);
+            fprintf(fp, "<pre class='gram-snap'>%s</pre> \n", s->grammarSnapshot);
         fprintf(fp, "</div>\n");
     }
     fprintf(fp, "</div>\n");
@@ -1014,12 +1014,12 @@ void MakeHtmlFileWithReport(Tables *pTables, ConversionReport *pRep, const char 
     fseek(fp, 0, SEEK_END);
     long sz = ftell(fp);
     rewind(fp);
-    char *orig = (char *)malloc(sz + 1);          /* era: char orig = (char)malloc(...) */
+    char *orig = (char *)malloc(sz + 1);          
     if (!orig) { fclose(fp); return; }
     size_t nread = fread(orig, 1, sz, fp);
     orig[nread] = '\0';
     fclose(fp);
-    char *h1End = strstr(orig, "</h1>");          /* era: strstr(orig, "") */
+    char *h1End = strstr(orig, "</h1>");          
     if (!h1End) { free(orig); return; }
     h1End += 5;
     fp = fopen(szFileName, "wt");
@@ -1038,20 +1038,20 @@ void MakeLalrHtmlFile(Tables *pTables, LalrTables *pLalr, ConversionReport *pRep
     FILE *fp = fopen(szFileName, "wt");
     if (!fp)
     {
-        printf("Errore nell'apertura del file %s.\n", szFileName);
+        printf("Error opening file %s.\n", szFileName);
         return;
     }
     WriteHtmlHeader(fp, "LALR(1) Grammar Tools");
     WriteConversionReportSection(fp, pRep);
 
     fprintf(fp,
-            "<div class='card'>\n<h2>Produzioni Numerate (%d)</h2>\n"
+            "<div class='card'>\n<h2>Numbered Productions (%d)</h2>\n"
             "<table class='grid-table' style='width: auto;'>\n"
-            "<tr><th>ID Produzione</th><th>Produzione</th></tr>\n",
+            "<tr><th>Production ID</th><th>Production</th></tr>\n",
             pTables->countProds);
     for (int i = 0; i < pTables->countProds; i++)
     {
-        fprintf(fp, "<tr><td class='mono' align='center'>%d</td><td class='mono'>%s → ",
+        fprintf(fp, "<tr><td class='mono' align='center'>%d</td><td class='mono'>%s →",
                 i, pTables->aProds[i].aSymbols[0].strLexeme);
         if (pTables->aProds[i].count == 1)
             fprintf(fp, "ε");
@@ -1063,9 +1063,9 @@ void MakeLalrHtmlFile(Tables *pTables, LalrTables *pLalr, ConversionReport *pRep
     fprintf(fp, "</table>\n</div>\n");
 
     fprintf(fp,
-            "<div class='card'>\n<h2>Automa Canonico LALR(1) (%d Stati)</h2>\n"
+            "<div class='card'>\n<h2>Canonical LALR(1) Automaton (%d States)</h2>\n"
             "<table class='grid-table'>\n"
-            "<tr><th>Stato</th><th>Item LALR(1) [Produzione, Lookahead]</th></tr>\n",
+            "<tr><th>State</th><th>LALR(1) Item [Production, Lookahead]</th></tr>\n",
             pLalr->numStates);
     for (int st = 0; st < pLalr->numStates; st++)
     {
@@ -1102,9 +1102,9 @@ void MakeLalrHtmlFile(Tables *pTables, LalrTables *pLalr, ConversionReport *pRep
     fprintf(fp, "</table>\n</div>\n");
 
     fprintf(fp,
-            "<div class='card'>\n<h2>Tabella Parsing LALR(1) (ACTION / GOTO)</h2>\n"
+            "<div class='card'>\n<h2>LALR(1) Parsing Table (ACTION / GOTO)</h2>\n"
             "<table class='grid-table'>\n"
-            "<tr><th rowspan='2'>Stato</th>"
+            "<tr><th rowspan='2'>State</th>"
             "<th colspan='%d'>ACTION</th><th colspan='%d'>GOTO</th></tr>\n",
             pTables->countTerminals + 1, pTables->countNonTerminals);
     fprintf(fp, "<tr>");
@@ -1159,21 +1159,21 @@ void MakeLalrCFile(Tables *pTables, LalrTables *pLalr, const char *szFileName)
 {
 	if (!pLalr->isLALR1)
 	{
-		printf("Impossibile generare il parser C: la grammatica ha conflitti LALR(1).\n");
+		printf("Unable to generate the C parser: the grammar has LALR(1) conflicts.\n");
 		return;
 	}
 	FILE *fp = fopen(szFileName, "wt");
 	if (!fp)
 	{
-		printf("Errore nell'apertura del file %s.\n", szFileName);
+		printf("Error opening file %s.\n", szFileName);
 		return;
 	}
 	int numT = pTables->countTerminals;
 	int numNT = pTables->countNonTerminals;
-	fprintf(fp, "/* Parser LALR(1) generato automaticamente - Vincenzo Lo Cicero */\n");
+	fprintf(fp, "/* Automatically generated LALR(1) parser - Vincenzo Lo Cicero */\n");
 	fprintf(fp, "#include <stdio.h>\n\n");
 	fprintf(fp, "#define LALR_NUM_STATES      %d\n", pLalr->numStates);
-	fprintf(fp, "#define LALR_NUM_TERMINALS   %d /* Incluso '$' */\n", numT + 1);
+	fprintf(fp, "#define LALR_NUM_TERMINALS   %d /* Including '$' */\n", numT + 1);
 	fprintf(fp, "#define LALR_NUM_NONTERM     %d\n", numNT);
 	fprintf(fp, "#define LALR_NUM_PRODUCTIONS %d\n", pTables->countProds);
 	fprintf(fp, "#define LALR_TOKEN_DOLLAR    %d\n\n", numT);
@@ -1220,23 +1220,23 @@ void MakeLalrCFile(Tables *pTables, LalrTables *pLalr, const char *szFileName)
 	fprintf(fp, "};\n\n");
 	fprintf(fp, "int ParseLALR1(const int *tokens, int numTokens)\n"
 				"{\n"
-				"    int stateStack[2048];\n"
+				"int stateStack[2048];\n"
 				"    int top = 0;\n"
-				"    int ip = 0;\n"
-				"    stateStack[0] = 0;\n\n"
+				"int ip = 0;\n"
+				"stateStack[0] = 0;\n\n"
 				"    while (1) {\n"
-				"        int state = stateStack[top];\n"
-				"        int lookahead = (ip < numTokens) ? tokens[ip] : LALR_TOKEN_DOLLAR;\n"
-				"        LalrCell cell = actionTable[state][lookahead];\n\n"
-				"        if (cell.type == ACT_SHIFT) {\n"
-				"            stateStack[++top] = cell.val;\n"
+				"int state = stateStack[top];\n"
+				"int lookahead = (ip < numTokens) ? tokens[ip] : LALR_TOKEN_DOLLAR;\n"
+				"LalrCell cell = actionTable[state][lookahead];\n\n"
+				"if (cell.type == ACT_SHIFT) {\n"
+				"stateStack[++top] = cell.val;\n"
 				"            ip++;\n"
-				"        } else if (cell.type == ACT_REDUCE) {\n"
-				"            LalrProd p = aProductions[cell.val];\n"
-				"            top -= p.rhsLen;\n"
-				"            int prevState = stateStack[top];\n"
-				"            stateStack[++top] = gotoTable[prevState][p.lhs];\n"
-				"        } else if (cell.type == ACT_ACCEPT) {\n"
+				"} else if (cell.type == ACT_REDUCE) {\n"
+				"LalrProd p = aProductions[cell.val];\n"
+				"top -= p.rhsLen;\n"
+				"int prevState = stateStack[top];\n"
+				"stateStack[++top] = gotoTable[prevState][p.lhs];\n"
+				"} else if (cell.type == ACT_ACCEPT) {\n"
 				"            return 1;\n"
 				"        } else {\n"
 				"            return 0;\n"

@@ -29,11 +29,8 @@
 #include "ast.h"
 
 /*
-prods_list : {prod}
-prod : T_NONTERMINAL ':' rhs;
-rhs : symbols_list {'|' symbols_list} ';'
-symbols_list : {T_TERMINAL | T_NONTERMINAL}
-*/
+ * prods_list : {prod} prod : T_NONTERMINAL ':' rhs; rhs : symbols_list {'|' symbols_list} ';' symbols_list : {T_TERMINAL | T_NONTERMINAL}
+ */
 
 int InitParser(ParserParams *pp)
 {
@@ -139,7 +136,7 @@ int FindOrInsertSymbol(char *lexeme, int type, ParserParams *pp)
 			pp->pTables->aNonTerminals = (Symbol*)realloc(pp->pTables->aNonTerminals, (sizeof(Symbol))*pp->pTables->countTempNonTerminals);
 			if ( !pp->pTables->aNonTerminals )
 			{
-				printf("Insufficient memory to reallocate non-terminals arrays!\n");
+				printf("Insufficient memory to reallocate non-terminal arrays!\n");
 				return x;
 			}
 		}
@@ -233,11 +230,8 @@ int match(TokenTypeEnum ExpectedToken, ParserParams *pp)
 
 
 /*
-prods_list : {prod}
-prod : T_NONTERMINAL ':' rhs;
-rhs : symbols_list {'|' symbols_list} ';'
-symbols_list : {T_TERMINAL | T_NONTERMINAL}
-*/
+ * prods_list : {prod} prod : T_NONTERMINAL ':' rhs; rhs : symbols_list {'|' symbols_list} ';' symbols_list : {T_TERMINAL | T_NONTERMINAL}
+ */
 
 // prods_list : {prod}
 int prods_list(ParserParams *pp)
@@ -325,7 +319,7 @@ int rhs(ParserParams *pp)
 					strcat(pp->strTemp, " ");
 
 				}
-				else // Terminale
+				else // Terminal 
 				{
 					strcat(pp->strTemp, pp->pTables->aTerminals[id].strLexeme);
 					strcat(pp->strTemp, " ");
@@ -373,7 +367,7 @@ int rhs(ParserParams *pp)
 
 				pp->pTables->countProds++;
 			}
-			else // Produzione già presente
+			else // Production already present
 			{
 				printf("Warning: The production \"%s\" is already defined. Duplicates are discarded.\n", pp->strTemp);
 				pp->numWarnings++;
@@ -399,7 +393,7 @@ int rhs(ParserParams *pp)
 			for ( x = 1; x <= pp->top; x++ )
 			{
 				id = pp->stack[x];
-				if ( id >= 10000 ) // Non Terminal
+				if ( id >= 10000 ) // Non-Terminal
 				{
 					id -= 10000;
 					strcat(pp->strTemp, pp->pTables->aNonTerminals[id].strLexeme);
@@ -438,12 +432,12 @@ int rhs(ParserParams *pp)
 				while ( pp->top > 0 )
 				{
 					id = pp->stack[pp->top];
-					if ( id >= 10000 ) // Non Terminale
+					if ( id >= 10000 ) // Non-Terminal
 					{
 						id -= 10000;
 						pp->pTables->aProds[x].aSymbols[pp->top] = pp->pTables->aNonTerminals[id];
 					}
-					else // Terminale
+					else // Terminal 
 					{
 						pp->pTables->aProds[x].aSymbols[pp->top] = pp->pTables->aTerminals[id];
 					}
@@ -457,7 +451,7 @@ int rhs(ParserParams *pp)
 
 				pp->pTables->countProds++;
 			}
-			else // Produzione già presente
+			else // Production already present
 			{
 				printf("Warning: the production \"%s\" is already defined. Duplicates are being discarded.\n", pp->strTemp);
 				pp->numWarnings++;
@@ -477,7 +471,7 @@ int rhs(ParserParams *pp)
 	return 1;
 }
 
-// symbols_list : {T_TERMINAL | T_NONTERMINAL}
+// symbols_list: {T_TERMINAL | T_NONTERMINAL}
 int symbols_list(ParserParams *pp)
 {
 	int id;

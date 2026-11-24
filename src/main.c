@@ -76,7 +76,7 @@ static void MakeOutputNames(const char *szFileInput, const char *customBase,
         strncpy(baseName, customBase, sizeof(baseName) - 1);
         baseName[sizeof(baseName) - 1] = '\0';
     } else {
-        /* Estrae solo il nome file senza il percorso (es. ../grammar_src/grammar_001.grm -> grammar_001) */
+        /* Extracts only the file name without the path (e.g. ../grammar_src/grammar_001.grm -> grammar_001) */
         const char *slash1 = strrchr(szFileInput, '/');
         const char *slash2 = strrchr(szFileInput, '\\');
         const char *fname = szFileInput;
@@ -103,10 +103,10 @@ static void MakeOutputNames(const char *szFileInput, const char *customBase,
 
 static void PrintHelpInfo(myopt_Parser_t optParser)
 {
-    printf("%s %s - Analizzatore e Convertitore di Grammatiche LL(1) / LALR(1)\n\n",
+    printf("%s %s – LL(1) / LALR(1) Grammar Parser and Converter\n\n",
            PACKAGE_NAME, PACKAGE_VERSION);
     printf("%s\n", optParser->strUsage);
-    printf("Esempi:\n");
+    printf("Examples:\n");
     printf("  %s grammar_001.grm\n", PACKAGE_NAME);
     printf("  %s -c -o out_converted grammar_022.grm\n\n", PACKAGE_NAME);
 }
@@ -116,7 +116,7 @@ static void PrintLicenseInfo(void)
 	printf("Copyright (C) 2013-2026 Vincenzo Lo Cicero.\n");
 	printf("\n");
 	printf("Author: Vincenzo Lo Cicero.\n");
-	printf("e-mail: vincenzolocicero68@gmail.com\n");
+	printf("Email: vincenzolocicero68@gmail.com\n");
 	printf("\n");
 	printf("vlcGrammarTools is free software: you can redistribute it and/or modify\n");
 	printf("it under the terms of the GNU General Public License as published by\n");
@@ -152,43 +152,43 @@ int main(int argc, char **argv)
 
     optParser = myopt_InitParser();
     if (!optParser) {
-        fprintf(stderr, "Errore di inizializzazione di myoptParser.\n");
+        fprintf(stderr, "Error initializing myoptParser.\n");
         return -1;
     }
 
-    /* Gruppo 0: Opzioni generali */
-    idGroupGeneral = myopt_AddGroup(optParser, "Opzioni generali", false, false);
+    /* Group 0: General options */
+    idGroupGeneral = myopt_AddGroup(optParser, "General options", false, false);
     myopt_AddOption(optParser, idGroupGeneral, 'h', "help",
-                    "Mostra questo messaggio di aiuto ed esce",
+                    "Show this help message and exit",
                     false, MOB_OVERRIDE, 0, 0, "");
     myopt_AddOption(optParser, idGroupGeneral, 'i', "info",
-                    "Mostra informazioni sulla licenza ed esce",
+                    "Show license information and exit",
                     false, MOB_OVERRIDE, 0, 0, "");
     myopt_AddOption(optParser, idGroupGeneral, 'v', "version",
-                    "Mostra la versione del programma ed esce",
+                    "Show program version and exit",
                     false, MOB_OVERRIDE, 0, 0, "");
     myopt_AddOption(optParser, idGroupGeneral, 'o', "output",
-                    "Prefisso nome file di output (senza estensione)",
+                    "Output file name prefix (without extension)",
                     false, MOB_OVERRIDE, 1, 1, "string");
 
-    /* Gruppo 1: Modalita' di conversione (mutuamente esclusive, opzionali) */
-    idGroupMode = myopt_AddGroup(optParser, "Conversione grammatica", true, false);
+    /* Group 1: Conversion modes (mutually exclusive, optional) */
+    idGroupMode = myopt_AddGroup(optParser, "Grammar conversion", true, false);
     myopt_AddOption(optParser, idGroupMode, 'c', "convert",
-                    "Converte automaticamente LL(1) <-> LALR(1) nell'altro formato",
+                    "Automatically converts LL(1) <-> LALR(1) to the other format",
                     false, MOB_OVERRIDE, 0, 0, "");
     myopt_AddOption(optParser, idGroupMode, 0, "to-ll1",
-                    "Forza la conversione e generazione per parser LL(1)",
+                    "Force conversion and generation for LL(1) parser",
                     false, MOB_OVERRIDE, 0, 0, "");
     myopt_AddOption(optParser, idGroupMode, 0, "to-lalr1",
-                    "Forza la conversione e generazione per parser LALR(1)",
+                    "Force conversion and generation for LALR(1) parser",
                     false, MOB_OVERRIDE, 0, 0, "");
 
-    /* Argomento posizionale: 1 file di grammatica .txt */
-    myopt_SetPositionalArgsParams(optParser, "FILE_GRAMMATICA", 0, 1, "string");
+    /* Positional argument: 1 .txt grammar file */
+    myopt_SetPositionalArgsParams(optParser, "GRAMMAR_FILE", 0, 1, "string");
 
     bParseOpt = myopt_ParseArray(optParser, argc, argv);
     if (optParser->countInternalErrors > 0) {
-        fprintf(stderr, "Errore interno opzioni: %s\n", optParser->strInternalErrors);
+        fprintf(stderr, "Internal options error: %s\n", optParser->strInternalErrors);
         myopt_FreeParser(optParser);
         return -1;
     }
@@ -239,7 +239,7 @@ int main(int argc, char **argv)
 
     MakeOutputNames(szFileInput, szCustomOut, szFileOutput_Html, szFileOutput_C);
 
-    /* --- 1. PARSING DELLA GRAMMATICA --- */
+    /* --- 1. GRAMMAR PARSING --- */
     Tables tables;
     InitTables(&tables);
     MakeArrays(&tables);
@@ -267,19 +267,19 @@ int main(int argc, char **argv)
     bool isLALR1 = (BuildLALR1(&tables, &lalr) && lalr.isLALR1);
 
     if (!isLL1 && !isLALR1) {
-        printf("Spiacente, la grammatica nel file %s non e' supportata\n", szFileInput);
+        printf("Sorry, the grammar in file %s is not supported\n", szFileInput);
         FreeLalrTables(&lalr, &tables);
         FreeArrays(&tables);
         myopt_FreeParser(optParser);
         return 0;
     }
 
-    /* Determina il tipo rilevato (LL(1) e' un sottoinsieme proprio di LALR(1)) */
+    /* Determines the type detected (LL(1) is a proper subset of LALR(1)) */
     const char *detectedType = isLL1 ? "LL(1)" : "LALR(1)";
-    printf("Grammatica rilevata nel file '%s': %s\n", szFileInput, detectedType);
+    printf("Grammar detected in file '%s': %s\n", szFileInput, detectedType);
 
-    /* --- 3. DECISIONE TARGET & CONVERSIONE --- */
-    bool targetIsLALR1 = !isLL1; /* Default: mantieni il tipo rilevato */
+    /* --- 3. TARGET DECISION & CONVERSION --- */
+    bool targetIsLALR1 = !isLL1; /* Default: keep the detected type */
     if (optConvert) {
         targetIsLALR1 = isLL1;   /* Inverti: LL(1)->LALR(1), LALR(1)->LL(1) */
     } else if (optToLALR1) {
@@ -296,37 +296,37 @@ int main(int argc, char **argv)
     if (!targetIsLALR1) {
         /* Target: LL(1) */
         if (!isLL1) {
-            printf("Conversione da LALR(1) a LL(1) in corso...\n");
+            printf("Conversion from LALR(1) to LL(1) in progress...\n");
             report.converted = 1;
             if (!ConvertLALRtoLL1(&tables, &report)) {
-                printf("Attenzione: la grammatica non e' convertibile in LL(1) senza conflitti.\n");
+                printf("Warning: The grammar cannot be converted to LL(1) without conflicts.\n");
                 MakeHtmlFileWithReport(&tables, &report, szFileOutput_Html);
-                printf("Report con analisi conflitti salvato in '%s'\n", szFileOutput_Html);
+                printf("Report with conflict analysis saved in '%s'\n", szFileOutput_Html);
                 FreeConversionReport(&report);
                 FreeLalrTables(&lalr, &tables);
                 FreeArrays(&tables);
                 myopt_FreeParser(optParser);
                 return 0;
             }
-            printf("Conversione in LL(1) completata con successo!\n");
+            printf("Conversion to LL(1) completed successfully!\n");
         }
         PrintTables(&tables);
         MakeHtmlFileWithReport(&tables, &report, szFileOutput_Html);
         MakeCFile(&tables, szFileOutput_C);
-        printf("File '%s' e '%s' generati (Modalita' LL(1)).\n", szFileOutput_Html, szFileOutput_C);
+        printf("Files '%s' and '%s' generated (LL(1) mode).\n", szFileOutput_Html, szFileOutput_C);
     } else {
         /* Target: LALR(1) */
         if (isLL1 && (optConvert || optToLALR1)) {
-            printf("Conversione da LL(1) a LALR(1) (costruzione automa e tabelle Action/Goto)...\n");
+            printf("Conversion from LL(1) to LALR(1) (automaton construction and Action/Goto tables)...\n");
             report.converted = 1;
             report.success = 1;
-            AddConversionStep(&report, "Grammatica LL(1) di partenza",
-                              "Ogni grammatica LL(1) e' gia' compatibile con l'analisi bottom-up LALR(1). Si procede alla generazione degli stati LR(0) e alla propagazione dei lookahead.",
+            AddConversionStep(&report, "Initial LL(1) grammar",
+                              "Every LL(1) grammar is already compatible with LALR(1) bottom-up parsing. The LR(0) states are generated and the lookaheads are propagated.",
                               &tables);
         }
         MakeLalrHtmlFile(&tables, &lalr, &report, szFileOutput_Html);
         MakeLalrCFile(&tables, &lalr, szFileOutput_C);
-        printf("File '%s' e '%s' generati (Modalita' LALR(1)).\n", szFileOutput_Html, szFileOutput_C);
+        printf("Files '%s' and '%s' generated (LALR(1) mode).\n", szFileOutput_Html, szFileOutput_C);
     }
 
     FreeConversionReport(&report);

@@ -322,21 +322,21 @@ void MakeArrays(Tables *pTables)
 	pTables->aNonTerminals = (Symbol*)malloc((sizeof(Symbol))*pTables->countTempNonTerminals);
 	if ( !pTables->aNonTerminals )
 	{
-		printf("Memoria non sufficiente per allocare array non terminali!\n");
+		printf("Insufficient memory to allocate non-terminal arrays!\n");
 		return;
 	}
 
 	pTables->aTerminals = (Symbol*)malloc((sizeof(Symbol))*pTables->countTempTerminals);
 	if ( !pTables->aTerminals )
 	{
-		printf("Memoria non sufficiente per allocare array terminali!\n");
+		printf("Insufficient memory to allocate terminal arrays!\n");
 		return;
 	}
 
 	pTables->aProds = (ArrayProduction*)malloc((sizeof(ArrayProduction))*pTables->countTempProds);	
 	if ( !pTables->aProds )
 	{
-		printf("Memoria non sufficiente per allocare array produzioni!\n");
+		printf("Insufficient memory to allocate production arrays!\n");
 		return;
 	}
 	
@@ -370,7 +370,7 @@ void ReallocArrays(Tables *pTables)
 		if ( !pTables->aNonTerminals )
 		{
 			free(pOldNonTerminals);
-			printf("Insufficient memory to reallocate non-terminals arrays!\n");
+			printf("Insufficient memory to reallocate non-terminal arrays!\n");
 			return;
 		}
 	}
@@ -937,10 +937,10 @@ void MakeNullableSet(Tables *pTables)
 
 int MutuallyRecursive(Tables *pTables)
 {
-	//A : B A a
+	// A : B A a
 	//  | ;
 
-	//B : b B c
+	// B : b B c
 	//  | A A ;
 
     // Mutual recursion complicates our task... 
@@ -1098,7 +1098,7 @@ void MakeFirstSets(Tables *pTables)
 			termList.next = NULL;
 			strcpy(szKey, pTables->aNonTerminals[idNonTerminal].strLexeme);
 			strcat(szKey, "empty");
-			if ( htFind(pHashTable, szKey) == -1 ) // Non Trovato
+			if ( htFind(pHashTable, szKey) == -1 ) // File Not Found
 			{
 				pTermList = AppendTerminalList(&termList, pTermList, 0);
 				//printf("empty");
@@ -1111,7 +1111,7 @@ void MakeFirstSets(Tables *pTables)
 			termList.next = NULL;
 			strcpy(szKey, pTables->aNonTerminals[idNonTerminal].strLexeme);
 			strcat(szKey, pTables->aProds[pStack1[x]].aSymbols[1].strLexeme);
-			if ( htFind(pHashTable, szKey) == -1 ) // Non Trovato
+			if ( htFind(pHashTable, szKey) == -1 ) // File Not Found
 			{
 				pTermList = AppendTerminalList(&termList, pTermList, 1);
 				//printf("%s", pTables->aProds[pStack1[x]].aSymbols[1].strLexeme);
@@ -1136,7 +1136,7 @@ void MakeFirstSets(Tables *pTables)
 				termList.next = NULL;
 				strcpy(szKey, pTables->aNonTerminals[idNonTerminal].strLexeme);
 				strcat(szKey, pTables->aProds[pStack2[x]].aSymbols[y].strLexeme);
-				if ( htFind(pHashTable, szKey) == -1 ) // Non Trovato
+				if ( htFind(pHashTable, szKey) == -1 ) // File Not Found
 				{
 					pTermList = AppendTerminalList(&termList, pTermList, 1);
 					//printf("%s", pTables->aProds[pStack2[x]].aSymbols[y].strLexeme);
@@ -1347,7 +1347,7 @@ void MakeFollowSets(Tables *pTables)
 							}
 							bNullable = 0;
 						}
-						else // NONTERMINAL
+						else // NON-TERMINAL
 						{
 							idNonTerminalNext = pTables->aProds[y].aSymbols[w].id;
 
@@ -1523,7 +1523,7 @@ void MakeTableLL(Tables *pTables)
 	pTables->problemList = NULL;
 
 	rows = pTables->countNonTerminals;
-	columns = pTables->countTerminals + 1; // +1 per il simbolo $
+	columns = pTables->countTerminals + 1; // +1 for the $ symbol
 
 	pTables->tableLL = (ProdsList* **)malloc(sizeof(ProdsList* *) * rows);
 	if ( !pTables->tableLL )
@@ -1593,7 +1593,7 @@ void MakeTableLL(Tables *pTables)
 				}
 				bNullable = 0;
 			}
-			else // NONTERMINAL
+			else // NON-TERMINAL
 			{
 				idNonTerminal = pTables->aProds[x].aSymbols[y].id;
 				idNonTerminalHead = pTables->aProds[x].aSymbols[0].id;
@@ -1717,7 +1717,7 @@ void MakeHtmlFile(Tables *pTables, const char *szFileName)
 	FILE *fp = fopen(szFileName, "wt");
 	if ( fp == NULL )
 	{
-		printf("Errore nell'apertura del file %s.\n", szFileName);
+		printf("Error opening file %s.\n", szFileName);
 		return;
 	}
 
@@ -1729,34 +1729,34 @@ void MakeHtmlFile(Tables *pTables, const char *szFileName)
 		"<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n"
 		"<title>LL(1) Grammar Tools - Vincenzo Lo Cicero</title>\n"
 		"<style>\n"
-		"  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f4f6f9; color: #1e293b; margin: 0; padding: 24px; line-height: 1.5; }\n"
-		"  .container { max-width: 1200px; margin: 0 auto; }\n"
-		"  h1 { font-size: 1.6rem; color: #0f172a; margin-bottom: 24px; border-bottom: 2px solid #cbd5e1; padding-bottom: 10px; }\n"
-		"  .card { background: #ffffff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); padding: 20px 24px; margin-bottom: 24px; overflow-x: auto; }\n"
-		"  .card h2 { font-size: 1.15rem; color: #334155; margin-top: 0; margin-bottom: 14px; border-left: 4px solid #2563eb; padding-left: 10px; }\n"
-		"  .symbols-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }\n"
-		"  ul.badge-list { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 8px; }\n"
-		"  ul.badge-list li { font-family: 'Consolas', 'Monaco', monospace; background: #e2e8f0; color: #0f172a; padding: 4px 10px; border-radius: 6px; font-size: 0.9rem; font-weight: 600; }\n"
-		"  ul.badge-list.term li { background: #dbeafe; color: #1e40af; }\n"
-		"  table { border-collapse: collapse; width: 100%%; font-size: 0.92rem; }\n"
-		"  table.prods { width: auto; min-width: 320px; }\n"
-		"  table.prods td { padding: 5px 10px; border-bottom: 1px solid #f1f5f9; font-family: 'Consolas', 'Monaco', monospace; }\n"
-		"  table.prods td.lhs { font-weight: bold; color: #0f172a; text-align: right; }\n"
-		"  table.prods td.arrow { color: #64748b; text-align: center; }\n"
-		"  table.prods td.rhs { color: #1d4ed8; }\n"
-		"  table.grid-table th, table.grid-table td { border: 1px solid #cbd5e1; padding: 8px 12px; }\n"
-		"  table.grid-table th { background-color: #1e293b; color: #ffffff; font-weight: 600; text-align: center; }\n"
-		"  table.grid-table tr:nth-child(even) { background-color: #f8fafc; }\n"
-		"  table.grid-table tr:hover { background-color: #f1f5f9; }\n"
-		"  .mono { font-family: 'Consolas', 'Monaco', monospace; }\n"
-		"  .nt-col { font-weight: bold; background-color: #f1f5f9; color: #0f172a; white-space: nowrap; }\n"
-		"  .yes { color: #15803d; font-weight: bold; }\n"
-		"  .no { color: #64748b; }\n"
-		"  .cell-prod { background-color: #eff6ff; color: #1e3a8a; font-family: 'Consolas', 'Monaco', monospace; font-weight: 600; white-space: nowrap; }\n"
-		"  .cell-conflict { background-color: #fef2f2; color: #b91c1c; font-family: 'Consolas', 'Monaco', monospace; font-weight: bold; white-space: nowrap; }\n"
-		"  .cell-error { color: #94a3b8; font-style: italic; text-align: center; font-size: 0.85rem; }\n"
-		"  .alert-error { background-color: #fef2f2; border: 1px solid #fecaca; border-left: 5px solid #dc2626; color: #991b1b; padding: 16px 20px; border-radius: 8px; margin-bottom: 24px; }\n"
-		"  .alert-error h3 { margin-top: 0; font-size: 1.1rem; }\n"
+		"body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f4f6f9; color: #1e293b; margin: 0; padding: 24px; line-height: 1.5; }\n"
+		".container { max-width: 1200px; margin: 0 auto; }\n"
+		"h1 { font-size: 1.6rem; color: #0f172a; margin-bottom: 24px; border-bottom: 2px solid #cbd5e1; padding-bottom: 10px; }\n"
+		".card { background: #ffffff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); padding: 20px 24px; margin-bottom: 24px; overflow-x: auto; }\n"
+		".card h2 { font-size: 1.15rem; color: #334155; margin-top: 0; margin-bottom: 14px; border-left: 4px solid #2563eb; padding-left: 10px; }\n"
+		".symbols-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }\n"
+		"ul.badge-list { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 8px; }\n"
+		"ul.badge-list li { font-family: 'Consolas', 'Monaco', monospace; background: #e2e8f0; color: #0f172a; padding: 4px 10px; border-radius: 6px; font-size: 0.9rem; font-weight: 600; }\n"
+		"ul.badge-list.term li { background: #dbeafe; color: #1e40af; }\n"
+		"table { border-collapse: collapse; width: 100%%; font-size: 0.92rem; }\n"
+		"table.prods { width: auto; min-width: 320px; }\n"
+		"table.prods td { padding: 5px 10px; border-bottom: 1px solid #f1f5f9; font-family: 'Consolas', 'Monaco', monospace; }\n"
+		"table.prods td.lhs { font-weight: bold; color: #0f172a; text-align: right; }\n"
+		"table.prods td.arrow { color: #64748b; text-align: center; }\n"
+		"table.prods td.rhs { color: #1d4ed8; }\n"
+		"table.grid-table th, table.grid-table td { border: 1px solid #cbd5e1; padding: 8px 12px; }\n"
+		"table.grid-table th { background-color: #1e293b; color: #ffffff; font-weight: 600; text-align: center; }\n"
+		"table.grid-table tr:nth-child(even) { background-color: #f8fafc; }\n"
+		"table.grid-table tr:hover { background-color: #f1f5f9; }\n"
+		".mono { font-family: 'Consolas', 'Monaco', monospace; }\n"
+		".nt-col { font-weight: bold; background-color: #f1f5f9; color: #0f172a; white-space: nowrap; }\n"
+		".yes { color: #15803d; font-weight: bold; }\n"
+		".no { color: #64748b; }\n"
+		".cell-prod { background-color: #eff6ff; color: #1e3a8a; font-family: 'Consolas', 'Monaco', monospace; font-weight: 600; white-space: nowrap; }\n"
+		".cell-conflict { background-color: #fef2f2; color: #b91c1c; font-family: 'Consolas', 'Monaco', monospace; font-weight: bold; white-space: nowrap; }\n"
+		".cell-error { color: #94a3b8; font-style: italic; text-align: center; font-size: 0.85rem; }\n"
+		".alert-error { background-color: #fef2f2; border: 1px solid #fecaca; border-left: 5px solid #dc2626; color: #991b1b; padding: 16px 20px; border-radius: 8px; margin-bottom: 24px; }\n"
+		".alert-error h3 { margin-top: 0; font-size: 1.1rem; }\n"
 		"</style>\n"
 		"</head>\n"
 		"<body>\n"
@@ -1770,14 +1770,14 @@ void MakeHtmlFile(Tables *pTables, const char *szFileName)
 	fprintf(fp, "<div class=\"card\">\n<h2>%d Non-Terminal Symbols</h2>\n<ul class=\"badge-list\">\n", pTables->countNonTerminals);
 	for (x = 0; x < pTables->countNonTerminals; x++)
 	{
-		fprintf(fp, "  <li>%s</li>\n", pTables->aNonTerminals[x].strLexeme);
+		fprintf(fp, "<li>%s</li>\n", pTables->aNonTerminals[x].strLexeme);
 	}
 	fprintf(fp, "</ul>\n</div>\n");
 
 	fprintf(fp, "<div class=\"card\">\n<h2>%d Terminal Symbols</h2>\n<ul class=\"badge-list term\">\n", pTables->countTerminals);
 	for (x = 0; x < pTables->countTerminals; x++)
 	{
-		fprintf(fp, "  <li>%s</li>\n", pTables->aTerminals[x].strLexeme);
+		fprintf(fp, "<li>%s</li>\n", pTables->aTerminals[x].strLexeme);
 	}
 	fprintf(fp, "</ul>\n</div>\n");
 
@@ -1789,14 +1789,14 @@ void MakeHtmlFile(Tables *pTables, const char *szFileName)
 
 	for ( x = 0; x < pTables->countProds; x++ )
 	{
-		fprintf(fp, "  <tr>\n");
+		fprintf(fp, "<tr>\n");
 		for ( y = 0; y < pTables->aProds[x].count; y++ )
 		{
 			if ( y == 0 )
 			{
-				fprintf(fp, "    <td class=\"lhs\">%s</td>\n", pTables->aProds[x].aSymbols[y].strLexeme);
-				fprintf(fp, "    <td class=\"arrow\">&rarr;</td>\n");
-				fprintf(fp, "    <td class=\"rhs\">");
+				fprintf(fp, "<td class=\"lhs\">%s</td>\n", pTables->aProds[x].aSymbols[y].strLexeme);
+				fprintf(fp, "<td class=\"arrow\">&rarr;</td>\n");
+				fprintf(fp, "<td class=\"rhs\">");
 
 				if ( pTables->aProds[x].count == 1 )
 				{
@@ -1818,28 +1818,28 @@ void MakeHtmlFile(Tables *pTables, const char *szFileName)
 		"<div class=\"card\">\n"
 		"<h2>First and Follow Sets</h2>\n"
 		"<table class=\"grid-table\">\n"
-		"  <thead>\n"
-		"    <tr>\n"
-		"      <th>Non-Terminal</th>\n"
-		"      <th>NULLABLE</th>\n"
-		"      <th>FIRST</th>\n"
-		"      <th>FOLLOW</th>\n"
-		"    </tr>\n"
-		"  </thead>\n"
-		"  <tbody>\n"
+		"<thead>\n"
+		"<tr>\n"
+		"<th>Non-Terminal</th>\n"
+		"<th>NULLABLE</th>\n"
+		"<th>FIRST</th>\n"
+		"<th>FOLLOW</th>\n"
+		"</tr>\n"
+		"</thead>\n"
+		"<tbody>\n"
 	);
 
 	for ( x = 0; x < pTables->countNonTerminals; x++ )
 	{
-		fprintf(fp, "    <tr>\n");
-		fprintf(fp, "      <td class=\"nt-col mono\">%s</td>\n", pTables->aNonTerminals[x].strLexeme);
+		fprintf(fp, "<tr>\n");
+		fprintf(fp, "<td class=\"nt-col mono\">%s</td>\n", pTables->aNonTerminals[x].strLexeme);
 
 		if ( pTables->aNonTerminals[x].bNullable )
-			fprintf(fp, "      <td align=\"center\" class=\"yes\">Yes</td>\n");
+			fprintf(fp, "<td align=\"center\" class=\"yes\">Yes</td>\n");
 		else
-			fprintf(fp, "      <td align=\"center\" class=\"no\">No</td>\n");
+			fprintf(fp, "<td align=\"center\" class=\"no\">No</td>\n");
 
-		fprintf(fp, "      <td class=\"mono\">");
+		fprintf(fp, "<td class=\"mono\">");
 		bEmpty = 0;
 		pTermList = pTables->aNonTerminals[x].pFirstSet;
 		while ( pTermList != NULL )
@@ -1851,10 +1851,10 @@ void MakeHtmlFile(Tables *pTables, const char *szFileName)
 			pTermList = pTermList->next;
 		}
 		if ( bEmpty )
-			fprintf(fp, "&epsilon; ");
+			fprintf(fp, "&epsilon;");
 		fprintf(fp, "</td>\n");
 
-		fprintf(fp, "      <td class=\"mono\">");
+		fprintf(fp, "<td class=\"mono\">");
 		bDollar = 0;
 		pTermList = pTables->aNonTerminals[x].pFollowSet;
 		while ( pTermList != NULL )
@@ -1869,9 +1869,9 @@ void MakeHtmlFile(Tables *pTables, const char *szFileName)
 			fprintf(fp, "$ ");
 		fprintf(fp, "</td>\n");
 
-		fprintf(fp, "    </tr>\n");
+		fprintf(fp, "</tr>\n");
 	}
-	fprintf(fp, "  </tbody>\n</table>\n</div>\n");
+	fprintf(fp, "</tbody>\n</table>\n</div>\n");
 	// ---------------------------- End First Follow Sets ----------------------------------
 
 	// ---------------------------- Start Problems List (se presente, mostralo in evidenza) -----
@@ -1889,13 +1889,13 @@ void MakeHtmlFile(Tables *pTables, const char *szFileName)
 		{
 			if ( pProblemList->idTerminal != T_DOLLAR && pProblemList->idTerminal < pTables->countTerminals )
 			{
-				fprintf(fp, "  <li>Table[%s, %s]</li>\n",
+				fprintf(fp, "<li>Table[%s, %s]</li>\n",
 					pTables->aNonTerminals[pProblemList->idNonTerminal].strLexeme,
 					pTables->aTerminals[pProblemList->idTerminal].strLexeme);
 			}
 			else
 			{
-				fprintf(fp, "  <li>Table[%s, $]</li>\n",
+				fprintf(fp, "<li>Table[%s, $]</li>\n",
 					pTables->aNonTerminals[pProblemList->idNonTerminal].strLexeme);
 			}
 			pProblemList = pProblemList->next;
@@ -1915,27 +1915,27 @@ void MakeHtmlFile(Tables *pTables, const char *szFileName)
 	for ( x = 0; x < pTables->countTerminals + 1; x++ )
 	{
 		if ( x < pTables->countTerminals )
-			fprintf(fp, "      <th class=\"mono\">%s</th>\n", pTables->aTerminals[x].strLexeme);
+			fprintf(fp, "<th class=\"mono\">%s</th>\n", pTables->aTerminals[x].strLexeme);
 		else
-			fprintf(fp, "      <th class=\"mono\">$</th>\n");
+			fprintf(fp, "<th class=\"mono\">$</th>\n");
 	}
 	fprintf(fp, "    </tr>\n  </thead>\n  <tbody>\n");
 
 	for ( x = 0; x < pTables->countNonTerminals; x++ )
 	{
-		fprintf(fp, "    <tr>\n");
-		fprintf(fp, "      <td class=\"nt-col mono\">%s</td>\n", pTables->aNonTerminals[x].strLexeme);
+		fprintf(fp, "<tr>\n");
+		fprintf(fp, "<td class=\"nt-col mono\">%s</td>\n", pTables->aNonTerminals[x].strLexeme);
 
 		for ( y = 0; y < pTables->countTerminals + 1; y++ )
 		{
 			if ( pTables->tableLL[x][y] != NULL )
 			{
 				pProdList = pTables->tableLL[x][y];
-				// Se ci sono più produzioni nella stessa cella, applica lo stile conflitto
+				// If there are multiple productions in the same cell, apply the conflict style
 				if ( pProdList->next != NULL )
-					fprintf(fp, "      <td class=\"cell-conflict\">");
+					fprintf(fp, "<td class=\"cell-conflict\">");
 				else
-					fprintf(fp, "      <td class=\"cell-prod\">");
+					fprintf(fp, "<td class=\"cell-prod\">");
 
 				while ( pProdList != NULL )
 				{
@@ -1961,13 +1961,13 @@ void MakeHtmlFile(Tables *pTables, const char *szFileName)
 			}
 			else
 			{
-				fprintf(fp, "      <td class=\"cell-error\">error</td>\n");
+				fprintf(fp, "<td class=\"cell-error\">error</td>\n");
 			}
 		}
-		fprintf(fp, "    </tr>\n");
+		fprintf(fp, "</tr>\n");
 	}
 
-	fprintf(fp, "  </tbody>\n</table>\n</div>\n");
+	fprintf(fp, "</tbody>\n</table>\n</div>\n");
 	fprintf(fp, "\n\n\n");
 	fclose(fp);
 }
@@ -1982,51 +1982,51 @@ void MakeCFile(Tables *pTables, const char *szFileName)
 
 	if ( pTables->problemList != NULL )
 	{
-		printf("Impossibile generare il parser C: la grammatica non e' LL(1).\n");
+		printf("Unable to generate the C parser: the grammar is not LL(1).\n");
 		return;
 	}
 
 	fp = fopen(szFileName, "wt");
 	if ( fp == NULL )
 	{
-		printf("Errore nell'apertura del file %s.\n", szFileName);
+		printf("Error opening file %s.\n", szFileName);
 		return;
 	}
 
-	fprintf(fp, "/* Generato automaticamente da LL(1) Grammar Tools - Vincenzo Lo Cicero */\n");
+	fprintf(fp, "/* Automatically generated by LL(1) Grammar Tools – Vincenzo Lo Cicero */\n");
 	fprintf(fp, "#ifndef PARSER_TABLES_H\n#define PARSER_TABLES_H\n\n");
 
 	fprintf(fp, "#define NUM_NONTERMINALS %d\n", pTables->countNonTerminals);
-	fprintf(fp, "#define NUM_TERMINALS    %d /* Incluso '$' */\n", pTables->countTerminals + 1);
+	fprintf(fp, "#define NUM_TERMINALS    %d /* Including '$' */\n", pTables->countTerminals + 1);
 	fprintf(fp, "#define NUM_PRODUCTIONS  %d\n", pTables->countProds);
 	fprintf(fp, "#define NT_OFFSET        %d\n", NT_OFFSET);
 	fprintf(fp, "#define TOKEN_DOLLAR     %d\n", pTables->countTerminals);
 	fprintf(fp, "#define START_SYMBOL     (NT_OFFSET + 0)\n\n");
 
-	// 1. Nomi dei Terminali (per messaggi di errore e debug) 
+	// 1. Terminal Names (for error messages and debugging)
 	fprintf(fp, "const char *szTerminals[NUM_TERMINALS] = {\n");
 	for ( x = 0; x < pTables->countTerminals; x++ )
 		fprintf(fp, "\t\"%s\",\n", pTables->aTerminals[x].strLexeme);
 	fprintf(fp, "\t\"$\"\n};\n\n");
 
-	// 2. Nomi dei Non-Terminali 
+	// 2. Names of Non-Terminals
 	fprintf(fp, "const char *szNonTerminals[NUM_NONTERMINALS] = {\n");
 	for ( x = 0; x < pTables->countNonTerminals; x++ )
 		fprintf(fp, "\t\"%s\"%s\n", pTables->aNonTerminals[x].strLexeme,
 				(x < pTables->countNonTerminals - 1) ? "," : "");
 	fprintf(fp, "};\n\n");
 
-	// 3. Struttura delle Produzioni (LHS e RHS) 
+	// 3. Production Structure (LHS and RHS)
 	fprintf(fp, "typedef struct {\n\tint lhs;\n\tint rhsLen;\n\tint rhs[32];\n} Production;\n\n");
 	fprintf(fp, "const Production aProductions[NUM_PRODUCTIONS] = {\n");
 	for ( x = 0; x < pTables->countProds; x++ )
 	{
 		int rhsLen = pTables->aProds[x].count - 1;
-		fprintf(fp, "\t{ NT_OFFSET + %d, %d, { ", pTables->aProds[x].aSymbols[0].id, rhsLen);
+		fprintf(fp, "\t{ NT_OFFSET + %d, %d, {", pTables->aProds[x].aSymbols[0].id, rhsLen);
 
 		if ( rhsLen == 0 )
 		{
-			fprintf(fp, "-1 "); // Produzione epsilon 
+			fprintf(fp, "-1 "); // Epsilon production
 		}
 		else
 		{
@@ -2046,7 +2046,7 @@ void MakeCFile(Tables *pTables, const char *szFileName)
 	}
 	fprintf(fp, "};\n\n");
 
-	// 4. Tabella LL(1): -1 = errore, >= 0 = indice in aProductions 
+	// 4. Table LL(1): -1 = error, >= 0 = index in aProductions
 	fprintf(fp, "const int tableLL[NUM_NONTERMINALS][NUM_TERMINALS] = {\n");
 	for ( x = 0; x < pTables->countNonTerminals; x++ )
 	{
@@ -2089,7 +2089,7 @@ void PrintStack(Tables *pTables, int *stack, int top)
 	printf("]");
 }
 
-// tokens[] contiene gli ID dei terminali dell'input, terminato da countTerminals ($) 
+// tokens[] contains the IDs of the input terminals, terminated by countTerminals ($)
 int SimulateLL1(Tables *pTables, int *tokens, int numTokens)
 {
 	int stack[MAX_STACK];
@@ -2099,15 +2099,15 @@ int SimulateLL1(Tables *pTables, int *tokens, int numTokens)
 
 	if ( pTables->problemList != NULL )
 	{
-		printf("Errore: la grammatica non e' LL(1).\n");
+		printf("Error: The grammar is not LL(1).\n");
 		return 0;
 	}
 
-	// Push '$' e simbolo iniziale 
+	// Push '$' and initial symbol
 	stack[++top] = pTables->countTerminals; // '$' 
 	stack[++top] = NT_OFFSET + 0;            // start symbol 
 
-	printf("\n--- SIMULAZIONE PARSER LL(1) ---\n");
+	printf("\n--- LL(1) PARSER SIMULATION ---\n");
 
 	while ( top >= 0 )
 	{
@@ -2119,12 +2119,12 @@ int SimulateLL1(Tables *pTables, int *tokens, int numTokens)
 		printf(" | Input: %s | Action: ",
 			   (a == pTables->countTerminals) ? "$" : pTables->aTerminals[a].strLexeme);
 
-		if ( X < NT_OFFSET ) /* X e' un terminale o '$' */
+		if ( X < NT_OFFSET ) /* X is a terminal or '$' */
 		{
 			if ( X == a )
 			{
-				top--; // Pop 
-				ip++;  // Avanza input 
+				top--; // Pop
+				ip++;  // Advance input
 				if ( X == pTables->countTerminals )
 				{
 					printf("ACCEPT!\n");
@@ -2134,20 +2134,20 @@ int SimulateLL1(Tables *pTables, int *tokens, int numTokens)
 			}
 			else
 			{
-				printf("SYNTAX ERROR! Atteso '%s', trovato '%s'\n",
+				printf("SYNTAX ERROR! Expected '%s', found '%s'\n",
 					   (X == pTables->countTerminals) ? "$" : pTables->aTerminals[X].strLexeme,
 					   (a == pTables->countTerminals) ? "$" : pTables->aTerminals[a].strLexeme);
 				return 0;
 			}
 		}
-		else // X e' un non-terminale 
+		else // X is a non-terminal
 		{
 			int ntIdx = X - NT_OFFSET;
 			ProdsList *entry = pTables->tableLL[ntIdx][a];
 
 			if ( entry == NULL )
 			{
-				printf("SYNTAX ERROR! Nessuna produzione in Table[%s, %s]\n",
+				printf("SYNTAX ERROR! No production in Table[%s, %s]\n",
 					   pTables->aNonTerminals[ntIdx].strLexeme,
 					   (a == pTables->countTerminals) ? "$" : pTables->aTerminals[a].strLexeme);
 				return 0;
@@ -2158,9 +2158,9 @@ int SimulateLL1(Tables *pTables, int *tokens, int numTokens)
 				int count = pTables->aProds[prodId].count;
 				int k;
 
-				top--; // Pop del non-terminale 
+				top--; // Non-terminal pop
 
-				// Stampa produzione applicata 
+				// Print applied production
 				printf("%s -> ", pTables->aProds[prodId].aSymbols[0].strLexeme);
 				if ( count == 1 )
 					printf("epsilon");
@@ -2169,7 +2169,7 @@ int SimulateLL1(Tables *pTables, int *tokens, int numTokens)
 						printf("%s ", pTables->aProds[prodId].aSymbols[k].strLexeme);
 				printf("\n");
 
-				// Push dei simboli RHS in ordine INVERSO 
+				// Push of RHS symbols in REVERSE order
 				for ( k = count - 1; k >= 1; k-- )
 				{
 					if ( top >= MAX_STACK - 1 )

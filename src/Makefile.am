@@ -1,5 +1,7 @@
 bin_PROGRAMS = vlcGrammarTools
 
+AM_CFLAGS = -std=c11 -Wall -Wextra -pedantic
+
 vlcGrammarTools_SOURCES = \
     main.c \
     ast.c ast.h \
