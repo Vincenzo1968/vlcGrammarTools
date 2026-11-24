@@ -1179,6 +1179,20 @@ void MakeLalrCFile(Tables *pTables, LalrTables *pLalr, const char *szFileName)
 		else fprintf(fp, "\tTOK_SYM_%d = %d, /* %s */\n", t, t, lex);
 	}
 	fprintf(fp, "\tTOK_EOF = %d\n};\n\n", numT);
+	
+	fprintf(fp, "enum LalrNonTerminals {\n");
+	if (numNT == 0)
+	{
+		fprintf(fp, "\tNT_DUMMY = 0\n");
+	}
+	else
+	{
+		for (int nt = 0; nt < numNT; nt++)
+		{
+			fprintf(fp, "\tNT_%s = %d%s\n", pTables->aNonTerminals[nt].strLexeme, nt, (nt < numNT - 1) ? "," : "");
+		}
+	}
+	fprintf(fp, "};\n\n");
 
 	fprintf(fp, "typedef enum { ACT_ERR = 0, ACT_SHIFT = 1, ACT_REDUCE = 2, ACT_ACCEPT = 3 } ActionType;\n");
 	fprintf(fp, "typedef struct { ActionType type; int val; } LalrCell;\ntypedef struct { int lhs; int rhsLen; } LalrProd;\n\n");

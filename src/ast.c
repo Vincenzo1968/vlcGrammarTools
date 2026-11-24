@@ -2037,6 +2037,20 @@ void MakeCFile(Tables *pTables, const char *szFileName)
 			fprintf(fp, "\tTOK_SYM_%d = %d, /* %s */\n", t, t, lex);
 	}
 	fprintf(fp, "\tTOK_EOF = %d\n};\n\n", pTables->countTerminals);
+	
+	fprintf(fp, "enum LlNonTerminals {\n");
+	if (pTables->countNonTerminals == 0)
+	{
+		fprintf(fp, "\tNT_DUMMY = 0\n");
+	}
+	else
+	{
+		for (int nt = 0; nt < pTables->countNonTerminals; nt++)
+		{
+			fprintf(fp, "\tNT_%s = %d%s\n", pTables->aNonTerminals[nt].strLexeme, nt, (nt < pTables->countNonTerminals - 1) ? "," : "");
+		}
+	}
+	fprintf(fp, "};\n\n");
 
 	for (x = 0; x < pTables->countProds; x++) {
 		fprintf(fp, "static const int prod_%d[] = { ", x);
