@@ -1,9 +1,12 @@
+# Oggetti compilati
 *.o
 *.a
 *.so
 *.exe
-src/vlcGrammarTools
+*.Po
+vlcGrammarTools
 
+# File generati da Autotools
 /autom4te.cache/
 /aclocal.m4
 /compile
@@ -20,7 +23,16 @@ Makefile
 Makefile.in
 .deps/
 
-/output/
+# Directory di output (a qualsiasi livello)
+output/
 
+# File di backup e swap
 *~
 *.bak
+*.swp
+*.swo
+
+# File di indicizzazione per editor
+tags
+TAGS
+cscope.*
