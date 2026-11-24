@@ -53,7 +53,7 @@ Run the executable from the `src/` directory (or specify the path to your gramma
 
 ### Examples
 
-1. **Analyze a grammar and generate HTML/C files using its native class (`LL(1)` or `LALR(1)`):**
+1. **Analyze a grammar and generate the HTML report using its native class (`LL(1)` or `LALR(1)`):**
    ```bash
    cd src
    ./vlcGrammarTools ../grammar_src/grammar_001.grm
@@ -67,6 +67,13 @@ Run the executable from the `src/` directory (or specify the path to your gramma
 3. **Convert an `LL(1)` grammar into `LALR(1)` (`ACTION` / `GOTO` tables):**
    ```bash
    ./vlcGrammarTools --to-lalr1 ../grammar_src/grammar_001.grm
+   ```
+
+4. **Generate and compile a standalone C parser with Bison-style semantic actions:**
+   ```bash
+   ./vlcGrammarTools --make_c_parser -o calc_demo ../grammar_src/calc_actions.grm
+   gcc ../output/calc_demo.c -o ../output/calc_demo
+   ../output/calc_demo
    ```
 
 ## Running Memory Tests (Valgrind)
