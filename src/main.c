@@ -68,7 +68,8 @@ static int FileExists(const char *path)
 static void MakeOutputNames(const char *szFileInput, const char *customBase,
                             char *szOutHtml, char *szOutC)
 {
-    const char *outDir = "../output";
+    //const char *outDir = "../output";
+    const char *outDir = "output";
     EnsureDirExists(outDir);
 
     char baseName[512];

@@ -9,7 +9,7 @@
   - **LALR(1) → LL(1)**: Performs indirect and immediate left-recursion elimination followed by iterative left factoring, verifying the resulting LL(1) parsing table.
   - **LL(1) → LALR(1)**: Builds the canonical LR(0) item sets, propagates LALR(1) lookaheads, and constructs the `ACTION` / `GOTO` parsing tables.
 - **Rich HTML Reports**: Generates standalone HTML documents with embedded CSS showing productions, `Nullable` / `FIRST` / `FOLLOW` sets, canonical LALR(1) states, parsing tables, and step-by-step conversion logs.
-- **C Code Generation**: Outputs ready-to-use C parsing tables and driver routines for both LL(1) and LALR(1) grammars.
+- **Reentrant & Thread-Safe C Code Generation**: Outputs pure, global-free C parsers (`ParseLL1(yyscan_t, YYSTYPE*)` / `ParseLALR1(yyscan_t, YYSTYPE*)`) and driver routines for both LL(1) and LALR(1) grammars.
 - **Safe Output Management**: Automatically saves generated `.html` and `.c` files into the `../output` directory, appending `(2)`, `(3)`, etc. instead of overwriting existing files.
 
 ## Semantic Actions (Bison-Style)

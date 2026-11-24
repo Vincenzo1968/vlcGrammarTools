@@ -2023,7 +2023,7 @@ void MakeCFile(Tables *pTables, const char *szFileName)
 	if (pTables->strPrologue && *pTables->strPrologue)
 		fprintf(fp, "/* --- Prologo --- */\n%s\n\n", pTables->strPrologue);
 
-	fprintf(fp, "#ifndef YYSTYPE\n#define YYSTYPE double\n#endif\nYYSTYPE yylval;\nint yylex(void);\nvoid yyerror(const char *s);\n\n");
+	fprintf(fp, "#ifndef YYSTYPE\n#define YYSTYPE double\n#endif\n#ifndef YYSCAN_T\ntypedef void *yyscan_t;\n#endif\nint yylex(YYSTYPE *yylval_param, yyscan_t yyscanner);\nvoid yyerror(yyscan_t yyscanner, const char *s);\n\n");
 	fprintf(fp, "#define LL_NUM_NONTERM %d\n#define LL_NUM_TERMINALS %d\n#define LL_NUM_PRODUCTIONS %d\n#define LL_TOKEN_DOLLAR %d\n#define LL_SYM_NT_BASE 10000\n#define LL_SYM_ACTION_BASE 20000\n\n",
 		pTables->countNonTerminals, numTerms, pTables->countProds, pTables->countTerminals);
 
@@ -2061,14 +2061,14 @@ void MakeCFile(Tables *pTables, const char *szFileName)
 	}
 	fprintf(fp, "\t\tdefault: break;\n\t}\n\t*vtop -= rhsLen;\n\tvalStack[++(*vtop)] = yyval;\n}\n\n");
 	fprintf(fp,
-		"int ParseLL1(YYSTYPE *pResult)\n{\n\tint symStack[2048], stop = -1, vtop = -1;\n\tYYSTYPE valStack[2048];\n"
-		"\tsymStack[++stop] = LL_TOKEN_DOLLAR;\n\tsymStack[++stop] = LL_SYM_NT_BASE + %d;\n\tint lookahead = yylex();\n"
+		"int ParseLL1(yyscan_t yyscanner, YYSTYPE *pResult)\n{\n\tint symStack[2048], stop = -1, vtop = -1;\n\tYYSTYPE valStack[2048];\n\tYYSTYPE yylval = (YYSTYPE)0;\n"
+		"\tsymStack[++stop] = LL_TOKEN_DOLLAR;\n\tsymStack[++stop] = LL_SYM_NT_BASE + %d;\n\tint lookahead = yylex(&yylval, yyscanner);\n"
 		"\twhile (stop >= 0) {\n\t\tint topSym = symStack[stop];\n"
 		"\t\tif (topSym >= LL_SYM_ACTION_BASE) { stop--; ExecuteLLAction(topSym - LL_SYM_ACTION_BASE, valStack, &vtop); }\n"
-		"\t\telse if (topSym < LL_SYM_NT_BASE) {\n\t\t\tif (topSym == lookahead) { stop--; if (lookahead != LL_TOKEN_DOLLAR) { valStack[++vtop] = yylval; lookahead = yylex(); } }\n"
-		"\t\t\telse { yyerror(\"Syntax error\"); return 0; }\n\t\t} else {\n"
+		"\t\telse if (topSym < LL_SYM_NT_BASE) {\n\t\t\tif (topSym == lookahead) { stop--; if (lookahead != LL_TOKEN_DOLLAR) { valStack[++vtop] = yylval; lookahead = yylex(&yylval, yyscanner); } }\n"
+		"\t\t\telse { yyerror(yyscanner, \"Syntax error\"); return 0; }\n\t\t} else {\n"
 		"\t\t\tint pid = (lookahead >= 0 && lookahead < LL_NUM_TERMINALS) ? tableLL[topSym - LL_SYM_NT_BASE][lookahead] : -1;\n"
-		"\t\t\tif (pid < 0) { yyerror(\"Syntax error\"); return 0; }\n\t\t\tstop--; symStack[++stop] = LL_SYM_ACTION_BASE + pid;\n"
+		"\t\t\tif (pid < 0) { yyerror(yyscanner, \"Syntax error\"); return 0; }\n\t\t\tstop--; symStack[++stop] = LL_SYM_ACTION_BASE + pid;\n"
 		"\t\t\tfor (int i = aProdRhsLen[pid] - 1; i >= 0; i--) symStack[++stop] = aProductions[pid][i];\n\t\t}\n\t}\n"
 		"\tif (pResult && vtop >= 0) *pResult = valStack[vtop];\n\treturn 1;\n}\n",
 		pTables->aProds[0].aSymbols[0].id

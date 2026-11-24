@@ -2,6 +2,11 @@
 #include <ctype.h>
 #include <math.h>
 #define YYSTYPE double
+
+typedef struct {
+    const char *input;
+    size_t pos;
+} LexerState;
 %}
 
 %%
@@ -20,21 +25,19 @@ fact : '(' expr ')'   { $$ = $2; }
      ;
 %%
 
-static const char *g_input = "5 + 8 * 2 / (4 + 4)";
-static size_t g_pos = 0;
-
-int yylex(void)
+int yylex(YYSTYPE *yylval_param, yyscan_t yyscanner)
 {
-    while (g_input[g_pos] == ' ' || g_input[g_pos] == '\t') g_pos++;
-    char c = g_input[g_pos];
+    LexerState *st = (LexerState *)yyscanner;
+    while (st->input[st->pos] == ' ' || st->input[st->pos] == '\t') st->pos++;
+    char c = st->input[st->pos];
     if (c == '\0') return TOK_EOF;
     if (isdigit((unsigned char)c)) {
         char *endp = NULL;
-        yylval = strtod(g_input + g_pos, &endp);
-        g_pos = (size_t)(endp - g_input);
+        *yylval_param = strtod(st->input + st->pos, &endp);
+        st->pos = (size_t)(endp - st->input);
         return TOK_NUM;
     }
-    g_pos++;
+    st->pos++;
     if (c == '+') return TOK_SYM_0;
     if (c == '-') return TOK_SYM_1;
     if (c == '*') return TOK_SYM_2;
@@ -44,12 +47,17 @@ int yylex(void)
     return -1;
 }
 
-void yyerror(const char *s) { fprintf(stderr, "Error: %s\n", s); }
+void yyerror(yyscan_t yyscanner, const char *s)
+{
+    (void)yyscanner;
+    fprintf(stderr, "Error: %s\n", s);
+}
 
 int main(void)
 {
+    LexerState st = { "5 + 8 * 2 / (4 + 4)", 0 };
     YYSTYPE res = 0.0;
-    if (ParseLALR1(&res))
-        printf("Input: %s => Result = %.2f\n", g_input, res);
+    if (ParseLALR1(&st, &res))
+        printf("Input: %s => Result = %.2f\n", st.input, res);
     return 0;
 }

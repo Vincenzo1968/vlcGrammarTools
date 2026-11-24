@@ -1168,7 +1168,7 @@ void MakeLalrCFile(Tables *pTables, LalrTables *pLalr, const char *szFileName)
 	if (pTables->strPrologue && *pTables->strPrologue)
 		fprintf(fp, "/* --- Prologo --- */\n%s\n\n", pTables->strPrologue);
 
-	fprintf(fp, "#ifndef YYSTYPE\n#define YYSTYPE double\n#endif\nYYSTYPE yylval;\nint yylex(void);\nvoid yyerror(const char *s);\n\n");
+	fprintf(fp, "#ifndef YYSTYPE\n#define YYSTYPE double\n#endif\n#ifndef YYSCAN_T\ntypedef void *yyscan_t;\n#endif\nint yylex(YYSTYPE *yylval_param, yyscan_t yyscanner);\nvoid yyerror(yyscan_t yyscanner, const char *s);\n\n");
 	fprintf(fp, "#define LALR_NUM_STATES %d\n#define LALR_NUM_TERMINALS %d\n#define LALR_NUM_NONTERM %d\n#define LALR_NUM_PRODUCTIONS %d\n#define LALR_TOKEN_DOLLAR %d\n\n",
 		pLalr->numStates, numT + 1, numNT, pTables->countProds, numT);
 
@@ -1201,9 +1201,9 @@ void MakeLalrCFile(Tables *pTables, LalrTables *pLalr, const char *szFileName)
 		for (int nt = 0; nt < numNT; nt++) { fprintf(fp, "%3d", pLalr->gotoTable[st][nt]); if (nt < numNT - 1) fprintf(fp, ", "); }
 		fprintf(fp, " }%s\n", (st < pLalr->numStates - 1) ? "," : "");
 	}
-	fprintf(fp, "};\n\nint ParseLALR1(YYSTYPE *pResult)\n{\n\tint stateStack[1024], top = 0;\n\tYYSTYPE valStack[1024];\n\tstateStack[0] = 0;\n\tint lookahead = yylex();\n");
+	fprintf(fp, "};\n\nint ParseLALR1(yyscan_t yyscanner, YYSTYPE *pResult)\n{\n\tint stateStack[1024], top = 0;\n\tYYSTYPE valStack[1024];\n\tYYSTYPE yylval = (YYSTYPE)0;\n\tstateStack[0] = 0;\n\tint lookahead = yylex(&yylval, yyscanner);\n");
 	fprintf(fp, "\twhile (1) {\n\t\tint st = stateStack[top];\n\t\tLalrCell cell = (lookahead >= 0 && lookahead < LALR_NUM_TERMINALS) ? actionTable[st][lookahead] : (LalrCell){ACT_ERR, 0};\n");
-	fprintf(fp, "\t\tif (cell.type == ACT_SHIFT) { top++; stateStack[top] = cell.val; valStack[top] = yylval; lookahead = yylex(); }\n");
+	fprintf(fp, "\t\tif (cell.type == ACT_SHIFT) { top++; stateStack[top] = cell.val; valStack[top] = yylval; lookahead = yylex(&yylval, yyscanner); }\n");
 	fprintf(fp, "\t\telse if (cell.type == ACT_REDUCE) {\n\t\t\tLalrProd p = aProductions[cell.val];\n\t\t\tYYSTYPE yyval = (p.rhsLen > 0) ? valStack[top - p.rhsLen + 1] : (YYSTYPE)0;\n\t\t\tswitch (cell.val) {\n");
 	for (int i = 0; i < pTables->countProds; i++) {
 		if (pTables->aProds[i].strAction && *pTables->aProds[i].strAction) {
@@ -1216,7 +1216,7 @@ void MakeLalrCFile(Tables *pTables, LalrTables *pLalr, const char *szFileName)
 	}
 	fprintf(fp, "\t\t\t\tdefault: break;\n\t\t\t}\n\t\t\ttop -= p.rhsLen;\n\t\t\tint prevSt = stateStack[top];\n\t\t\ttop++; stateStack[top] = gotoTable[prevSt][p.lhs]; valStack[top] = yyval;\n\t\t}\n");
 	fprintf(fp, "\t\telse if (cell.type == ACT_ACCEPT) { if (pResult && top >= 1) *pResult = valStack[top]; return 1; }\n");
-	fprintf(fp, "\t\telse { yyerror(\"Syntax error\"); return 0; }\n\t}\n}\n");
+	fprintf(fp, "\t\telse { yyerror(yyscanner, \"Syntax error\"); return 0; }\n\t}\n}\n");
 	if (pTables->strEpilogue && *pTables->strEpilogue) fprintf(fp, "\n/* --- Epilogo --- */\n%s\n", pTables->strEpilogue);
 	fclose(fp);
 }
