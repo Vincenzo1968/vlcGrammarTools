@@ -1,6 +1,20 @@
 #!/bin/bash
 set -e
 
+# test_long_inputs.sh
+#
+# Verifica che i parser generati da vlcGrammarTools (LL(1) e LALR(1))
+# non vadano in crash o memory leak su input molto lunghi o profondi.
+#
+# Uso:
+#   ./tests/test_long_inputs.sh                          # grammatica default
+#   ./tests/test_long_inputs.sh grammar_src/expr_01.grm  # grammatica specifica
+#
+# Richiede: gcc, python3, valgrind (opzionale ma consigliato).
+# Crea una directory temporanea test_long_tmp/ (gitignored).
+#
+# Exit code: 0 se tutti i test passano, 1 altrimenti.
+
 # --- 1. Risoluzione percorso grammatica ---
 GRAMMAR_ARG=${1:-grammar_src/calc_actions.grm}
 if [[ "$GRAMMAR_ARG" != /* ]]; then
@@ -89,7 +103,6 @@ if grep -q '^int original_main' parser_nomain.c; then
     echo "OK: 'main' rinominato in 'original_main'"
 else
     echo "ATTENZIONE: sed non ha trovato 'int main(' nel file generato!"
-    echo "Controllo manuale:"
     grep -n 'int main' "$GENERATED_C" || echo "(nessuna occorrenza)"
     exit 1
 fi
@@ -109,7 +122,7 @@ for N in 100 1000 5000; do
     python3 -c "print('('*$N + '1' + ')'*$N)" > "input_deep_$N.txt"
 done
 
-# --- 9. Esecuzione test ---
+# --- 9. Esecuzione test (senza valgrind) ---
 echo "=== Esecuzione test ==="
 FAIL=0
 for f in input_*.txt; do
@@ -122,7 +135,7 @@ for f in input_*.txt; do
     fi
 done
 
-# --- 10. Valgrind opzionale ---
+# --- 10. Valgrind su un input rappresentativo (medio) ---
 if command -v valgrind >/dev/null; then
     echo "=== Valgrind su input_long_1000.txt ==="
     if valgrind --error-exitcode=1 --leak-check=full --errors-for-leak-kinds=definite \
@@ -130,9 +143,11 @@ if command -v valgrind >/dev/null; then
         echo "Valgrind: OK (nessun leak definito)"
     else
         echo "Valgrind: FALLITO"
-        cat valgrind.log | tail -30
+        tail -30 valgrind.log
         FAIL=$((FAIL+1))
     fi
+else
+    echo "Valgrind non installato, salto il controllo dei leak."
 fi
 
 # --- 11. Riepilogo ---

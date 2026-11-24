@@ -67,6 +67,19 @@ run_vg "Semantic actions C parser generation (calc_actions.grm)" --make_c_parser
 # Cleanup temporary output artifacts
 rm -f output/vg_test_* /tmp/vg_out.txt
 
+# ------------------------------------------------------------
+# [TEST] Generated parser (semantic actions) on long input
+# ------------------------------------------------------------
+echo "------------------------------------------------------------"
+echo "[TEST] Generated parser (actions) — long input + valgrind"
+if ./tests/test_long_inputs.sh grammar_src/calc_actions.grm >/dev/null 2>&1; then
+    echo "  --> [OK] Clean (exit code: 0)"
+    PASS=$((PASS + 1))
+else
+    echo "  --> [FAIL] See 'tests/test_long_inputs.sh' output"
+    FAIL=$((FAIL + 1))
+fi
+
 echo "============================================================"
 echo "VALGRIND SUMMARY: $PASS passed, $FAIL failed."
 echo "============================================================"

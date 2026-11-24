@@ -28,7 +28,7 @@ fact : '(' expr ')'   { $$ = $2; }
 int yylex(YYSTYPE *yylval_param, yyscan_t yyscanner)
 {
     LexerState *st = (LexerState *)yyscanner;
-    while (st->input[st->pos] == ' ' || st->input[st->pos] == '\t') st->pos++;
+    while (isspace((unsigned char)st->input[st->pos])) st->pos++;
     char c = st->input[st->pos];
     if (c == '\0') return TOK_EOF;
     if (isdigit((unsigned char)c)) {

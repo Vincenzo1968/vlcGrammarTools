@@ -2026,6 +2026,17 @@ void MakeCFile(Tables *pTables, const char *szFileName)
 	fprintf(fp, "#ifndef YYSTYPE\n#define YYSTYPE double\n#endif\n#ifndef YYSCAN_T\ntypedef void *yyscan_t;\n#endif\nint yylex(YYSTYPE *yylval_param, yyscan_t yyscanner);\nvoid yyerror(yyscan_t yyscanner, const char *s);\n\n");
 	fprintf(fp, "#define LL_NUM_NONTERM %d\n#define LL_NUM_TERMINALS %d\n#define LL_NUM_PRODUCTIONS %d\n#define LL_TOKEN_DOLLAR %d\n#define LL_SYM_NT_BASE 10000\n#define LL_SYM_ACTION_BASE 20000\n\n",
 		pTables->countNonTerminals, numTerms, pTables->countProds, pTables->countTerminals);
+		
+	fprintf(fp, "enum LlTokens {\n");
+	for (int t = 0; t < pTables->countTerminals; t++)
+	{
+		const char *lex = pTables->aTerminals[t].strLexeme;
+		if ((*lex >= 'A' && *lex <= 'Z') || (*lex >= 'a' && *lex <= 'z') || *lex == '_')
+			fprintf(fp, "\tTOK_%s = %d,\n", lex, t);
+		else
+			fprintf(fp, "\tTOK_SYM_%d = %d, /* %s */\n", t, t, lex);
+	}
+	fprintf(fp, "\tTOK_EOF = %d\n};\n\n", pTables->countTerminals);
 
 	for (x = 0; x < pTables->countProds; x++) {
 		fprintf(fp, "static const int prod_%d[] = { ", x);

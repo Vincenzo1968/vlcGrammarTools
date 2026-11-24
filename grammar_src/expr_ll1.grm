@@ -1,0 +1,61 @@
+%{
+#include <stdio.h>
+#include <stdlib.h>
+#include <ctype.h>
+#define YYSTYPE double
+
+typedef struct {
+    const char *input;
+    size_t pos;
+} LexerState;
+%}
+
+start  : expr ;
+expr   : term exprp ;
+exprp  : '+' term exprp
+       | '-' term exprp
+       | ;
+term   : fact termp ;
+termp  : '*' fact termp
+       | '/' fact termp
+       | ;
+fact   : '(' expr ')'
+       | NUM ;
+
+%%
+int yylex(YYSTYPE *yylval_param, yyscan_t yyscanner)
+{
+    LexerState *st = (LexerState *)yyscanner;
+    while (isspace((unsigned char)st->input[st->pos])) st->pos++;
+    char c = st->input[st->pos];
+    if (c == '\0') return TOK_EOF;
+    if (isdigit((unsigned char)c)) {
+        char *endp = NULL;
+        *yylval_param = strtod(st->input + st->pos, &endp);
+        st->pos = (size_t)(endp - st->input);
+        return TOK_NUM;
+    }
+    st->pos++;
+    if (c == '+') return TOK_SYM_0;
+    if (c == '-') return TOK_SYM_1;
+    if (c == '*') return TOK_SYM_2;
+    if (c == '/') return TOK_SYM_3;
+    if (c == '(') return TOK_SYM_4;
+    if (c == ')') return TOK_SYM_5;
+    return -1;
+}
+
+void yyerror(yyscan_t yyscanner, const char *s)
+{
+    (void)yyscanner;
+    fprintf(stderr, "Error: %s\n", s);
+}
+
+int main(void)
+{
+    LexerState st = { "((1+2)*3)", 0 };
+    YYSTYPE res = 0.0;
+    if (ParseLL1(&st, &res))
+        printf("OK\n");
+    return 0;
+}

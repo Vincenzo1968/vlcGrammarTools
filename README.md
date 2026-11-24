@@ -76,6 +76,37 @@ Run the executable from the `src/` directory (or specify the path to your gramma
    ../output/calc_demo
    ```
 
+## Generated parsers: reentrancy, thread-safety and robustness
+
+The C parsers produced with `--make_c_parser` (both LL(1) and LALR(1)) are:
+
+- **Reentrant** — no global mutable state. All parsing state (`stateStack`,
+  `valStack`, `symStack`, `vtop`, `top`, `stop`) is local to the parse function.
+- **Thread-safe** — multiple threads can call `ParseLALR1` / `ParseLL1`
+  concurrently, each with its own lexer instance (`yyscan_t`). The lexer must
+  also be reentrant (as in the shipped examples: state kept in a `LexerState`
+  struct passed through `yyscanner`).
+- **Memory-safe** — the state stacks grow dynamically via `malloc`/`realloc`.
+  There is no fixed limit on input length or nesting depth. All allocated
+  memory is freed on both the success and error paths (verified with Valgrind).
+- **Bison-compatible semantic actions** — `$$` and `$1..$k` placeholders are
+  translated to direct stack accesses.
+
+### Testing generated parsers on long or deep inputs
+
+```bash
+./tests/test_long_inputs.sh [path/to/grammar.grm]
+```
+
+The script generates inputs with up to 10,000 operators and 5,000 nested
+parentheses, compiles the parser, runs the suite, and (if Valgrind is
+installed) checks for memory leaks. Example:
+
+```bash
+./tests/test_long_inputs.sh                                  # default: calc_actions.grm
+./tests/test_long_inputs.sh grammar_src/expr_ll1.grm         # LL(1) parser
+```
+
 ## Running Memory Tests (Valgrind)
 
 To verify that there are no memory leaks or invalid memory accesses across all parsing and conversion paths, run the included Valgrind test suite:
