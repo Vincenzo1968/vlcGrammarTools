@@ -75,6 +75,9 @@ typedef struct tagScannerParams
 
 	int line;
 	int column;
+
+	int bStartSymbol;
+	int bNonTerminalLower;
 } ScannerParams;
 
 int InitScanner(Token *pToken, ScannerParams *p);

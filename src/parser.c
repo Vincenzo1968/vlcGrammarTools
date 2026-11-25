@@ -78,6 +78,18 @@ void FreeParser(ParserParams *pp)
 	free(pp->pHT);
 }
 
+static void AppendStrTemp(char *dst, size_t dstSize, const char *src)
+{
+	size_t curLen = strlen(dst);
+	size_t srcLen = strlen(src);
+	if (curLen + 1 >= dstSize)
+		return;
+	size_t avail = dstSize - curLen - 1;
+	size_t copyLen = (srcLen < avail) ? srcLen : avail;
+	memcpy(dst + curLen, src, copyLen);
+	dst[curLen + copyLen] = '\0';
+}
+
 int FindOrInsertSymbol(char *lexeme, int type, ParserParams *pp)
 {
 	int x;
@@ -88,35 +100,31 @@ int FindOrInsertSymbol(char *lexeme, int type, ParserParams *pp)
 		while ( x < pp->pTables->countTerminals )
 		{
 			if ( strcmp(lexeme, pp->pTables->aTerminals[x].strLexeme) == 0 )
-			{
 				return x;
-			}
 			x++;
 		}
 		if ( x >= pp->pTables->countTempTerminals )
 		{
-			pp->pTables->countTempTerminals += 21;
-			pp->pTables->aTerminals = (Symbol*)realloc(pp->pTables->aTerminals, (sizeof(Symbol))*pp->pTables->countTempTerminals);
-			if ( !pp->pTables->aTerminals )
+			int newCap = pp->pTables->countTempTerminals + 21;
+			Symbol *tmp = (Symbol *)realloc(pp->pTables->aTerminals, sizeof(Symbol) * (size_t)newCap);
+			if ( !tmp )
 			{
 				printf("Insufficient memory to reallocate the terminals array!\n");
-				return x;
+				return -1;
 			}
+			pp->pTables->aTerminals = tmp;
+			pp->pTables->countTempTerminals = newCap;
 		}
 		pp->pTables->aTerminals[x].bNullable = 0;
 		pp->pTables->aTerminals[x].id = x;
 		pp->pTables->aTerminals[x].Type = T_TERMINAL;
 		pp->pTables->aTerminals[x].pFirstSet = NULL;
 		pp->pTables->aTerminals[x].pFollowSet = NULL;
-		pp->pTables->aTerminals[x].strLexeme = (char*)malloc(strlen(lexeme) + 1);
+		pp->pTables->aTerminals[x].strLexeme = (char *)malloc(strlen(lexeme) + 1);
 		if ( pp->pTables->aTerminals[x].strLexeme != NULL )
-		{
 			strcpy(pp->pTables->aTerminals[x].strLexeme, lexeme);
-		}
 		else
-		{
-			printf("Insufficient memory to allocate aNonTerminals[%d].strLexeme\n", x);
-		}
+			printf("Insufficient memory to allocate aTerminals[%d].strLexeme\n", x);
 
 		pp->pTables->countTerminals++;
 	}
@@ -126,35 +134,32 @@ int FindOrInsertSymbol(char *lexeme, int type, ParserParams *pp)
 		while ( x < pp->pTables->countNonTerminals )
 		{
 			if ( strcmp(lexeme, pp->pTables->aNonTerminals[x].strLexeme) == 0 )
-			{
 				return x;
-			}
 			x++;
 		}
 		if ( x >= pp->pTables->countTempNonTerminals )
 		{
-			pp->pTables->countTempNonTerminals += 21;
-			pp->pTables->aNonTerminals = (Symbol*)realloc(pp->pTables->aNonTerminals, (sizeof(Symbol))*pp->pTables->countTempNonTerminals);
-			if ( !pp->pTables->aNonTerminals )
+			int newCap = pp->pTables->countTempNonTerminals + 21;
+			Symbol *tmp = (Symbol *)realloc(pp->pTables->aNonTerminals, sizeof(Symbol) * (size_t)newCap);
+			if ( !tmp )
 			{
 				printf("Insufficient memory to reallocate non-terminal arrays!\n");
-				return x;
+				return -1;
 			}
+			pp->pTables->aNonTerminals = tmp;
+			pp->pTables->countTempNonTerminals = newCap;
 		}
 		pp->pTables->aNonTerminals[x].bNullable = 0;
 		pp->pTables->aNonTerminals[x].id = x;
 		pp->pTables->aNonTerminals[x].Type = T_NONTERMINAL;
 		pp->pTables->aNonTerminals[x].pFirstSet = NULL;
 		pp->pTables->aNonTerminals[x].pFollowSet = NULL;
-		pp->pTables->aNonTerminals[x].strLexeme = (char*)malloc(strlen(lexeme) + 1);
+		pp->pTables->aNonTerminals[x].strLexeme = (char *)malloc(strlen(lexeme) + 1);
 		if ( pp->pTables->aNonTerminals[x].strLexeme != NULL )
-		{
 			strcpy(pp->pTables->aNonTerminals[x].strLexeme, lexeme);
-		}
 		else
-		{
 			printf("Insufficient memory to allocate aNonTerminals[%d].strLexeme\n", x);
-		}
+
 		pp->pTables->countNonTerminals++;
 	}
 
@@ -162,8 +167,9 @@ int FindOrInsertSymbol(char *lexeme, int type, ParserParams *pp)
 }
 
 void Panic(ParserParams *pp)
-{ 
+{
 	pp->numErrors++;
+	pp->top = -1;
 
 	while ( pp->myToken.Type != T_SEMICOLON && pp->myToken.Type != T_EOF )
 	{
@@ -276,12 +282,15 @@ int prods_list(ParserParams *pp)
 int prod(ParserParams *pp)
 {
 	int id;
+	int stackCap = (int)(sizeof(pp->stack) / sizeof(pp->stack[0]));
 
 	if ( !pp->numErrors )
 	{
 		if ( pp->myToken.Type == T_NONTERMINAL )
 		{
 			id = FindOrInsertSymbol(pp->myToken.szValue, T_NONTERMINAL, pp);
+			if ( id < 0 || pp->top + 1 >= stackCap )
+				return 0;
 			pp->stack[++pp->top] = id + 10000;
 		}
 	}
@@ -344,61 +353,53 @@ int rhs(ParserParams *pp)
 		}
 		if ( !pp->numErrors )
 		{
-			id = pp->stack[0];
-			id -= 10000;
-			strcpy(pp->strTemp, pp->pTables->aNonTerminals[id].strLexeme);
-			strcat(pp->strTemp, " -> ");
+			id = pp->stack[0] - 10000;
+			pp->strTemp[0] = '\0';
+			AppendStrTemp(pp->strTemp, sizeof(pp->strTemp), pp->pTables->aNonTerminals[id].strLexeme);
+			AppendStrTemp(pp->strTemp, sizeof(pp->strTemp), " -> ");
 			for ( x = 1; x <= pp->top; x++ )
 			{
 				id = pp->stack[x];
-				if ( id >= 10000 ) // Non-terminal
-				{
-					id -= 10000;
-					strcat(pp->strTemp, pp->pTables->aNonTerminals[id].strLexeme);
-					strcat(pp->strTemp, " ");
-
-				}
-				else // Terminal 
-				{
-					strcat(pp->strTemp, pp->pTables->aTerminals[id].strLexeme);
-					strcat(pp->strTemp, " ");
-				}				
+				if ( id >= 10000 )
+					AppendStrTemp(pp->strTemp, sizeof(pp->strTemp), pp->pTables->aNonTerminals[id - 10000].strLexeme);
+				else
+					AppendStrTemp(pp->strTemp, sizeof(pp->strTemp), pp->pTables->aTerminals[id].strLexeme);
+				AppendStrTemp(pp->strTemp, sizeof(pp->strTemp), " ");
 			}
 			f = htFind(pp->pHT, pp->strTemp);
-			if ( f == -1 ) // Production not present. Proceeding to add it to the array of productions..
+			if ( f == -1 )
 			{
 				htInsert(pp->pHT, pp->strTemp);
 
 				x = pp->pTables->countProds;
 				if ( x >= pp->pTables->countTempProds )
 				{
-					pp->pTables->countTempProds += 21;
-					pp->pTables->aProds = (ArrayProduction*)realloc(pp->pTables->aProds, (sizeof(ArrayProduction))*pp->pTables->countTempProds);
-					if ( !pp->pTables->aProds )
+					int newCap = pp->pTables->countTempProds + 21;
+					ArrayProduction *tmp = (ArrayProduction *)realloc(pp->pTables->aProds, sizeof(ArrayProduction) * (size_t)newCap);
+					if ( !tmp )
 					{
+						free(pendingAction);
 						printf("Insufficient memory to reallocate productions array!\n");
 						return 0;
 					}
+					pp->pTables->aProds = tmp;
+					pp->pTables->countTempProds = newCap;
 				}
 				pp->pTables->aProds[x].count = pp->top + 1;
-				pp->pTables->aProds[x].aSymbols = (Symbol *)malloc(sizeof(Symbol) * (pp->top + 1));
+				pp->pTables->aProds[x].aSymbols = (Symbol *)malloc(sizeof(Symbol) * (size_t)(pp->top + 1));
 				if ( !pp->pTables->aProds[x].aSymbols )
 				{
+					free(pendingAction);
 					printf("Insufficient memory for production array.\n");
 					return 0;
 				}
 				while ( pp->top > 0 )
 				{
 					id = pp->stack[pp->top];
-					if ( id >= 10000 ) // Non-Terminal
-					{
-						id -= 10000;
-						pp->pTables->aProds[x].aSymbols[pp->top] = pp->pTables->aNonTerminals[id];
-					}
-					else // Terminal
-					{
+					if ( id >= 10000 )
+						pp->pTables->aProds[x].aSymbols[pp->top] = pp->pTables->aNonTerminals[id - 10000];
+					else
 						pp->pTables->aProds[x].aSymbols[pp->top] = pp->pTables->aTerminals[id];
-					}
 					pp->top--;
 				}
 				id = pp->stack[0];
@@ -406,11 +407,9 @@ int rhs(ParserParams *pp)
 
 				pp->pTables->aProds[x].strAction = pendingAction;
 				pendingAction = NULL;
-				if ( !pp->pTables->bIgnoreActions && pp->myToken.strAction )
-					pp->pTables->aProds[x].strAction = strdup(pp->myToken.strAction);
 				pp->pTables->countProds++;
 			}
-			else // Production already present
+			else
 			{
 				free(pendingAction);
 				pendingAction = NULL;
@@ -419,9 +418,13 @@ int rhs(ParserParams *pp)
 				pp->top = 0;
 			}
 		}
+		else
+		{
+			free(pendingAction);
+			pendingAction = NULL;
+		}
 
-		//match(T_VERTBAR, pp);
-		GetNextToken(&(pp->myToken), &(pp->sp));		
+		GetNextToken(&(pp->myToken), &(pp->sp));
 
 		if ( !symbols_list(pp) )
 			return 0;
@@ -431,44 +434,39 @@ int rhs(ParserParams *pp)
 	{
 		if ( !pp->numErrors )
 		{
-			id = pp->stack[0];
-			id -= 10000;
-			strcpy(pp->strTemp, pp->pTables->aNonTerminals[id].strLexeme);
-			strcat(pp->strTemp, " -> ");
+			id = pp->stack[0] - 10000;
+			pp->strTemp[0] = '\0';
+			AppendStrTemp(pp->strTemp, sizeof(pp->strTemp), pp->pTables->aNonTerminals[id].strLexeme);
+			AppendStrTemp(pp->strTemp, sizeof(pp->strTemp), " -> ");
 			for ( x = 1; x <= pp->top; x++ )
 			{
 				id = pp->stack[x];
-				if ( id >= 10000 ) // Non-Terminal
-				{
-					id -= 10000;
-					strcat(pp->strTemp, pp->pTables->aNonTerminals[id].strLexeme);
-					strcat(pp->strTemp, " ");
-
-				}
-				else // Terminal
-				{
-					strcat(pp->strTemp, pp->pTables->aTerminals[id].strLexeme);
-					strcat(pp->strTemp, " ");
-				}				
+				if ( id >= 10000 )
+					AppendStrTemp(pp->strTemp, sizeof(pp->strTemp), pp->pTables->aNonTerminals[id - 10000].strLexeme);
+				else
+					AppendStrTemp(pp->strTemp, sizeof(pp->strTemp), pp->pTables->aTerminals[id].strLexeme);
+				AppendStrTemp(pp->strTemp, sizeof(pp->strTemp), " ");
 			}
 			f = htFind(pp->pHT, pp->strTemp);
-			if ( f == -1 ) // Production not present. Proceeding to add it to the array of productions..
+			if ( f == -1 )
 			{
 				htInsert(pp->pHT, pp->strTemp);
 
 				x = pp->pTables->countProds;
 				if ( x >= pp->pTables->countTempProds )
 				{
-					pp->pTables->countTempProds += 21;
-					pp->pTables->aProds = (ArrayProduction*)realloc(pp->pTables->aProds, (sizeof(ArrayProduction))*pp->pTables->countTempProds);
-					if ( !pp->pTables->aProds )
+					int newCap = pp->pTables->countTempProds + 21;
+					ArrayProduction *tmp = (ArrayProduction *)realloc(pp->pTables->aProds, sizeof(ArrayProduction) * (size_t)newCap);
+					if ( !tmp )
 					{
 						printf("Insufficient memory to reallocate productions array!\n");
 						return 0;
 					}
+					pp->pTables->aProds = tmp;
+					pp->pTables->countTempProds = newCap;
 				}
 				pp->pTables->aProds[x].count = pp->top + 1;
-				pp->pTables->aProds[x].aSymbols = (Symbol *)malloc(sizeof(Symbol) * (pp->top + 1));
+				pp->pTables->aProds[x].aSymbols = (Symbol *)malloc(sizeof(Symbol) * (size_t)(pp->top + 1));
 				if ( !pp->pTables->aProds[x].aSymbols )
 				{
 					printf("Insufficient memory for production array.\n");
@@ -477,26 +475,26 @@ int rhs(ParserParams *pp)
 				while ( pp->top > 0 )
 				{
 					id = pp->stack[pp->top];
-					if ( id >= 10000 ) // Non-Terminal
-					{
-						id -= 10000;
-						pp->pTables->aProds[x].aSymbols[pp->top] = pp->pTables->aNonTerminals[id];
-					}
-					else // Terminal 
-					{
+					if ( id >= 10000 )
+						pp->pTables->aProds[x].aSymbols[pp->top] = pp->pTables->aNonTerminals[id - 10000];
+					else
 						pp->pTables->aProds[x].aSymbols[pp->top] = pp->pTables->aTerminals[id];
-					}
-
 					pp->top--;
 				}
 				id = pp->stack[0];
 				pp->pTables->aProds[x].aSymbols[0] = pp->pTables->aNonTerminals[id - 10000];
-
 				pp->top--;
+
+				pp->pTables->aProds[x].strAction = NULL;
+				if ( !pp->pTables->bIgnoreActions && pp->myToken.strAction )
+				{
+					pp->pTables->aProds[x].strAction = pp->myToken.strAction;
+					pp->myToken.strAction = NULL;
+				}
 
 				pp->pTables->countProds++;
 			}
-			else // Production already present
+			else
 			{
 				printf("Warning: the production \"%s\" is already defined. Duplicates are being discarded.\n", pp->strTemp);
 				pp->numWarnings++;
@@ -520,21 +518,26 @@ int rhs(ParserParams *pp)
 int symbols_list(ParserParams *pp)
 {
 	int id;
+	int stackCap = (int)(sizeof(pp->stack) / sizeof(pp->stack[0]));
 
 	while ( pp->myToken.Type == T_TERMINAL || pp->myToken.Type == T_NONTERMINAL )
 	{
 		if ( pp->myToken.Type == T_TERMINAL )
 		{
 			id = FindOrInsertSymbol(pp->myToken.szValue, T_TERMINAL, pp);
+			if ( id < 0 || pp->top + 1 >= stackCap )
+				return 0;
 			pp->stack[++pp->top] = id;
 		}
-		else // NON_TERMINAL
+		else
 		{
 			id = FindOrInsertSymbol(pp->myToken.szValue, T_NONTERMINAL, pp);
+			if ( id < 0 || pp->top + 1 >= stackCap )
+				return 0;
 			pp->stack[++pp->top] = id + 10000;
 		}
 
-		GetNextToken(&(pp->myToken), &(pp->sp));		
+		GetNextToken(&(pp->myToken), &(pp->sp));
 		if ( pp->myToken.Type == T_SCAN_ERROR || pp->myToken.Type == T_UNKNOWN )
 		{
 			pp->numErrors++;
@@ -543,3 +546,4 @@ int symbols_list(ParserParams *pp)
 
 	return 1;
 }
+

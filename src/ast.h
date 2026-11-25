@@ -23,6 +23,7 @@
 #ifndef AST_H
 #define AST_H
 
+#include <stdio.h>
 #include "symtab.h"
 #include "scanner.h"
 
@@ -100,6 +101,7 @@ typedef struct tagTables
 	ProblemList *problemList;
 
 	ConstraintsList *constraintsList;
+	int startSymbolId;
 	char *strPrologue;
 	char *strEpilogue;
 	int bIgnoreActions;
@@ -146,9 +148,12 @@ void MakeTableLL(Tables *pTables);
 void MakeHtmlFile(Tables *pTables, const char *szFileName);
 
 char* TranslateSemanticAction(const char *rawCode, int rhsLen, const char *lhsExpr, const char *rhsFmt);
-char* TranslateSemanticAction(const char *rawCode, int rhsLen, const char *lhsExpr, const char *rhsFmt);
 void MakeCFile(Tables *pTables, const char *szFileName);
 
 int SimulateLL1(Tables *pTables, int *tokens, int numTokens);
+
+void PrintHtmlEscaped(FILE *fp, const char *s);
+int IsValidCIdent(const char *s);
+void PrintCSanitizedComment(FILE *fp, const char *s);
 
 #endif // AST_H

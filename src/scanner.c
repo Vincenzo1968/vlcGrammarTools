@@ -30,32 +30,36 @@ int InitScanner(Token *pToken, ScannerParams *pParams)
 {
 	pToken->szValue[0] = '\0';
 	pToken->lexeme[0]  = '\0';
-	
+	pToken->strAction  = NULL;
+
 	pParams->szInput = NULL;
-
 	pParams->pos = 0;
-
 	pParams->line = 1;
-	pParams->column = 1;	
-	
+	pParams->column = 1;
+	pParams->bStartSymbol = 1;
+	pParams->bNonTerminalLower = 1;
+
 	return 1;
 }
 
 void FreeScanner(ScannerParams *pParams)
-{	
+{
 	if ( pParams->szInput != NULL )
 		free(pParams->szInput);
-	pParams->szInput = NULL;	
+	pParams->szInput = NULL;
 }
 
 int ReadFile(char *szFileName, ScannerParams *p)
 {
 	FILE *fp;
-	int dimFile = 0;
-	int bytereads = 0;
+	long dimFile = 0;
+	size_t bytereads = 0;
 
 	if ( p->szInput != NULL )
+	{
 		free(p->szInput);
+		p->szInput = NULL;
+	}
 
 	fp = fopen(szFileName, "rb");
 	if ( fp == NULL )
@@ -77,7 +81,7 @@ int ReadFile(char *szFileName, ScannerParams *p)
 		return 0;
 	}
 
-	p->szInput = (char*)malloc(sizeof(char)*dimFile + 1);
+	p->szInput = (char *)malloc((size_t)dimFile + 1);
 	if ( !p->szInput )
 	{
 		printf("Error: insufficient memory.\n");
@@ -88,8 +92,8 @@ int ReadFile(char *szFileName, ScannerParams *p)
 
 	fseek(fp, 0, SEEK_SET);
 
-	bytereads = fread(p->szInput, 1, dimFile, fp);
-	*(p->szInput + bytereads) = '\0';
+	bytereads = fread(p->szInput, 1, (size_t)dimFile, fp);
+	p->szInput[bytereads] = '\0';
 
 	fclose(fp);
 
@@ -100,7 +104,7 @@ static char* ReadBalancedCodeBlock(ScannerParams *p, int isPrologue, int *pErrLi
 {
 	size_t cap = 256;
 	size_t len = 0;
-	char *buf = (char*)malloc(cap);
+	char *buf = (char *)malloc(cap);
 	if (!buf) return NULL;
 	buf[0] = '\0';
 
@@ -138,7 +142,13 @@ static char* ReadBalancedCodeBlock(ScannerParams *p, int isPrologue, int *pErrLi
 		{
 			if (c == '*' && *(p->szInput + p->pos) == '/')
 			{
-				if (len + 3 >= cap) { cap *= 2; buf = (char*)realloc(buf, cap); }
+				if (len + 3 >= cap)
+				{
+					cap *= 2;
+					char *tmp = (char *)realloc(buf, cap);
+					if (!tmp) { free(buf); return NULL; }
+					buf = tmp;
+				}
 				buf[len++] = c;
 				buf[len++] = *(p->szInput + p->pos);
 				p->pos++;
@@ -151,7 +161,13 @@ static char* ReadBalancedCodeBlock(ScannerParams *p, int isPrologue, int *pErrLi
 		{
 			if (c == '\\' && *(p->szInput + p->pos) != '\0')
 			{
-				if (len + 3 >= cap) { cap *= 2; buf = (char*)realloc(buf, cap); }
+				if (len + 3 >= cap)
+				{
+					cap *= 2;
+					char *tmp = (char *)realloc(buf, cap);
+					if (!tmp) { free(buf); return NULL; }
+					buf = tmp;
+				}
 				buf[len++] = c;
 				buf[len++] = *(p->szInput + p->pos);
 				if (*(p->szInput + p->pos) == '\n') { p->line++; p->column = 1; }
@@ -165,11 +181,18 @@ static char* ReadBalancedCodeBlock(ScannerParams *p, int isPrologue, int *pErrLi
 		{
 			if (c == '\\' && *(p->szInput + p->pos) != '\0')
 			{
-				if (len + 3 >= cap) { cap *= 2; buf = (char*)realloc(buf, cap); }
+				if (len + 3 >= cap)
+				{
+					cap *= 2;
+					char *tmp = (char *)realloc(buf, cap);
+					if (!tmp) { free(buf); return NULL; }
+					buf = tmp;
+				}
 				buf[len++] = c;
 				buf[len++] = *(p->szInput + p->pos);
+				if (*(p->szInput + p->pos) == '\n') { p->line++; p->column = 1; }
+				else { p->column++; }
 				p->pos++;
-				p->column++;
 				continue;
 			}
 			if (c == '\'') inChar = 0;
@@ -200,7 +223,7 @@ static char* ReadBalancedCodeBlock(ScannerParams *p, int isPrologue, int *pErrLi
 		if (len + 2 >= cap)
 		{
 			cap *= 2;
-			char *tmp = (char*)realloc(buf, cap);
+			char *tmp = (char *)realloc(buf, cap);
 			if (!tmp) { free(buf); return NULL; }
 			buf = tmp;
 		}
@@ -217,9 +240,7 @@ void GetNextToken(Token *pToken, ScannerParams *p)
 	States state = S0;
 	char c;
 	int k = 0;
-
-	static int bStartSymbol = 1;
-	static int bNonTerminalLower = 1;
+	int maxLex = (int)sizeof(pToken->lexeme) - 1;
 
 	if ( p->szInput == NULL )
 	{
@@ -325,29 +346,22 @@ void GetNextToken(Token *pToken, ScannerParams *p)
 			{
 				state = S8;
 			}
-			else if ( c == '\'' ) // Terminal character literal
+			else if ( c == '\'' )
 			{
 				state = S2;
 			}
-			else if ( c == '"' ) // Terminal string literal
+			else if ( c == '"' )
 			{
 				state = S5;
 			}
 			else if ( ((c >= 'a' && c <= 'z')) || ((c >= 'A') && (c <= 'Z')) )
 			{
-				pToken->lexeme[k++] = c;
+				if (k < maxLex) pToken->lexeme[k++] = c;
 
-				if ( bStartSymbol )
+				if ( p->bStartSymbol )
 				{
-					if ( c >= 'a' && c <= 'z' )
-					{
-						bNonTerminalLower = 1;
-					}
-					else
-					{
-						bNonTerminalLower = 0;
-					}
-					bStartSymbol = 0;
+					p->bNonTerminalLower = (c >= 'a' && c <= 'z') ? 1 : 0;
+					p->bStartSymbol = 0;
 				}
 
 				state = S1;
@@ -359,82 +373,56 @@ void GetNextToken(Token *pToken, ScannerParams *p)
 				pToken->szValue[1] = '\0';
 
 				k = 0;
-
 				pToken->lexeme[k++] = c;
 
-				while ( c != ' ' && c != '\t' && c != '\r' && c != '\n' &&
-					    c != ';' && c != '|' && c != '\0' 
-					  )
+				while (1)
 				{
-					c = *(p->szInput + p->pos);
+					char nextC = *(p->szInput + p->pos);
+					if ( nextC == ' ' || nextC == '\t' || nextC == '\r' || nextC == '\n' ||
+					     nextC == ';' || nextC == '|' || nextC == '\0' )
+					{
+						break;
+					}
 					p->pos++;
-					pToken->lexeme[k++] = c;
-
 					p->column++;
-
-					if ( c == '\n' )
-					{
-						p->line++;
-						p->column = 1;
-					}
-
-					if ( c == '\0' )
-					{
-						--p->pos;
-					}
+					if ( k < maxLex )
+						pToken->lexeme[k++] = nextC;
 				}
-
-				k--;
-				p->pos--;
 
 				pToken->lexeme[k] = '\0';
 				pToken->line = p->line;
 				pToken->column = p->column;
 
-				printf("GetNextToken Error: Line %d Column %d: Invalid identifier '%s'.\n", pToken->line, pToken->column, pToken->lexeme);
+				printf("GetNextToken Error: Line %d Column %d: Invalid identifier '%s'.\n",
+				       pToken->line, pToken->column, pToken->lexeme);
 
 				return;
 			}
 			break;
 		case S1:
-			if ( ((c >= 'a' && c <= 'z')) || ((c >= 'A') && (c <= 'Z')) || ((c >= '0') && (c <= '9')) )
+			if ( ((c >= 'a' && c <= 'z')) || ((c >= 'A') && (c <= 'Z')) ||
+			     ((c >= '0') && (c <= '9')) || (c == '_') )
 			{
-				pToken->lexeme[k++] = c;
-			}
-			else if ( c == '_' )
-			{
-				pToken->lexeme[k++] = c;
+				if (k < maxLex) pToken->lexeme[k++] = c;
 			}
 			else
 			{
 				pToken->lexeme[k] = '\0';
 
-				if ( bNonTerminalLower )
+				if ( p->bNonTerminalLower )
 				{
-					if ( (pToken->lexeme[0] >= 'a' && pToken->lexeme[0] <= 'z') )
-					{
-						pToken->Type = T_NONTERMINAL; // Non-terminals begin with a lowercase character.
-					}
-					else
-					{
-						pToken->Type = T_TERMINAL; // Terminals begin with an uppercase character
-					}
+					pToken->Type = (pToken->lexeme[0] >= 'a' && pToken->lexeme[0] <= 'z')
+					               ? T_NONTERMINAL : T_TERMINAL;
 				}
 				else
 				{
-					if ( (pToken->lexeme[0] >= 'a' && pToken->lexeme[0] <= 'z') )
-					{
-						pToken->Type = T_TERMINAL; // Terminals begin with an uppercase character
-					}
-					else
-					{
-						pToken->Type = T_NONTERMINAL; // Non-terminals begin with a lowercase character.
-					}
+					pToken->Type = (pToken->lexeme[0] >= 'a' && pToken->lexeme[0] <= 'z')
+					               ? T_TERMINAL : T_NONTERMINAL;
 				}
 
 				pToken->line = p->line;
 				pToken->column = p->column;
-				strcpy(pToken->szValue, pToken->lexeme);
+				snprintf(pToken->szValue, sizeof(pToken->szValue), "%s", pToken->lexeme);
 				--p->pos;
 
 				return;
@@ -458,31 +446,14 @@ void GetNextToken(Token *pToken, ScannerParams *p)
 			}
 			break;
 		case S3:
-			if ( c == '\\' )
+			if ( c == '\\' || c == '\'' )
 			{
 				pToken->lexeme[0] = c;
 				state = S4;
 			}
-			else if ( c == '\'' )
-			{
-				pToken->lexeme[0] = c;
-				state = S4;
-			}
-			else if ( c == 'r' )
-			{
-				pToken->lexeme[0] = '\r';
-				state = S4;
-			}
-			else if ( c == 'n' )
-			{
-				pToken->lexeme[0] = '\n';
-				state = S4;
-			}
-			else if ( c == 't' )
-			{
-				pToken->lexeme[0] = '\t';
-				state = S4;
-			}
+			else if ( c == 'r' ) { pToken->lexeme[0] = '\r'; state = S4; }
+			else if ( c == 'n' ) { pToken->lexeme[0] = '\n'; state = S4; }
+			else if ( c == 't' ) { pToken->lexeme[0] = '\t'; state = S4; }
 			else
 			{
 				if ( c == '\n' )
@@ -502,7 +473,6 @@ void GetNextToken(Token *pToken, ScannerParams *p)
 				pToken->Type = T_TERMINAL;
 				pToken->lexeme[1] = '\0';
 				strcpy(pToken->szValue, pToken->lexeme);
-
 				return;
 			}
 			else
@@ -521,8 +491,7 @@ void GetNextToken(Token *pToken, ScannerParams *p)
 			{
 				pToken->lexeme[k] = '\0';
 				pToken->Type = T_TERMINAL;
-				strcpy(pToken->szValue, pToken->lexeme);
-				
+				snprintf(pToken->szValue, sizeof(pToken->szValue), "%s", pToken->lexeme);
 				return;
 			}
 			else if ( c == '\n' )
@@ -532,39 +501,26 @@ void GetNextToken(Token *pToken, ScannerParams *p)
 
 				pToken->Type = T_SCAN_ERROR;
 				printf("Scanner error: Line %d Column %d: The string must end on the same line.\n", pToken->line, pToken->column);
+				return;
+			}
+			else if ( c == '\0' )
+			{
+				pToken->Type = T_SCAN_ERROR;
+				printf("Scanner error: Line %d Column %d: Unterminated string literal.\n", pToken->line, pToken->column);
+				--p->pos;
 				return;
 			}
 			else
 			{
-				pToken->lexeme[k++] = c;
+				if (k < maxLex) pToken->lexeme[k++] = c;
 			}
 			break;
 		case S6:
-			if ( c == '"' )
-			{
-				pToken->lexeme[k++] = '"';
-				state = S5;
-			}
-			else if ( c == '\\' )
-			{
-				pToken->lexeme[k++] = '\\';
-				state = S5;
-			}
-			else if ( c == 't' )
-			{
-				pToken->lexeme[k++] = '\t';
-				state = S5;
-			}
-			else if ( c == 'r' )
-			{
-				pToken->lexeme[k++] = '\r';
-				state = S5;
-			}
-			else if ( c == 'n' )
-			{
-				pToken->lexeme[k++] = '\n';
-				state = S5;
-			}
+			if ( c == '"' ) { if (k < maxLex) pToken->lexeme[k++] = '"'; state = S5; }
+			else if ( c == '\\' ) { if (k < maxLex) pToken->lexeme[k++] = '\\'; state = S5; }
+			else if ( c == 't' ) { if (k < maxLex) pToken->lexeme[k++] = '\t'; state = S5; }
+			else if ( c == 'r' ) { if (k < maxLex) pToken->lexeme[k++] = '\r'; state = S5; }
+			else if ( c == 'n' ) { if (k < maxLex) pToken->lexeme[k++] = '\n'; state = S5; }
 			else if ( c == '\n' )
 			{
 				p->line++;
@@ -572,7 +528,6 @@ void GetNextToken(Token *pToken, ScannerParams *p)
 
 				pToken->Type = T_SCAN_ERROR;
 				printf("Scanner error: Line %d Column %d: The string must end on the same line.\n", pToken->line, pToken->column);
-
 				return;
 			}
 			else
@@ -584,7 +539,6 @@ void GetNextToken(Token *pToken, ScannerParams *p)
 			break;
 		case S7:
 		{
-			/* Rimetti indietro il primo carattere letto dopo '{' */
 			p->pos--;
 			p->column--;
 			int errL = p->line, errC = p->column;
@@ -602,14 +556,8 @@ void GetNextToken(Token *pToken, ScannerParams *p)
 			return;
 		}
 		case S8:
-			if ( c == '/' ) // Comment until the end of the line
-			{
-				state = S9;
-			}
-			else if ( c == '*' ) // Multi-line comment up to '*/'
-			{
-				state = S10;
-			}
+			if ( c == '/' ) state = S9;
+			else if ( c == '*' ) state = S10;
 			else
 			{
 				pToken->Type = T_SCAN_ERROR;
@@ -652,9 +600,7 @@ void GetNextToken(Token *pToken, ScannerParams *p)
 			break;
 		case S10:
 			if ( c == '*' )
-			{
 				state = S11;
-			}
 			else if ( c == '\0' )
 			{
 				pToken->Type = T_SCAN_ERROR;
@@ -705,9 +651,8 @@ void GetNextToken(Token *pToken, ScannerParams *p)
 				state = S10;
 			}
 			break;
-		} // end switch
+		}
 
 		p->column++;
-	} // end while
+	}
 }
-

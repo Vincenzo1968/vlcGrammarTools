@@ -268,10 +268,22 @@ static void ComputeSuffixFirst(const Tables *pTables, int prodId, int startIdx, 
 	}
 }
 
+static int GetStartSymbolId(const Tables *pTables)
+{
+	if (pTables && pTables->startSymbolId >= 0 && pTables->startSymbolId < pTables->countNonTerminals)
+		return pTables->startSymbolId;
+	if (pTables && pTables->countProds > 0)
+		return pTables->aProds[0].aSymbols[0].id;
+	return 0;
+}
+
 static void ComputeClosure(const Tables *pTables, LalrState *st, int withLookahead)
 {
 	int numTerms = pTables->countTerminals;
-	int *tempLA = (int *)malloc((numTerms + 1) * sizeof(int));
+	int startId = GetStartSymbolId(pTables);
+	int *tempLA = (int *)malloc((size_t)(numTerms + 1) * sizeof(int));
+	if (!tempLA)
+		return;
 	int changed = 1;
 
 	while (changed)
@@ -289,7 +301,7 @@ static void ComputeClosure(const Tables *pTables, LalrState *st, int withLookahe
 				if (dotPos == 1)
 				{
 					nextType = T_NONTERMINAL;
-					nextId = pTables->aProds[0].aSymbols[0].id;
+					nextId = startId;
 				}
 			}
 			else
@@ -311,7 +323,7 @@ static void ComputeClosure(const Tables *pTables, LalrState *st, int withLookahe
 				}
 				else
 				{
-					memset(tempLA, 0, (numTerms + 1) * sizeof(int));
+					memset(tempLA, 0, (size_t)(numTerms + 1) * sizeof(int));
 				}
 
 				for (int pr = 0; pr < pTables->countProds; pr++)
@@ -378,20 +390,27 @@ int BuildLALR1(Tables *pTables, LalrTables *pLalr)
 	int numNT = pTables->countNonTerminals;
 	int numT = pTables->countTerminals;
 	int totalSyms = numNT + numT;
+	int startId = GetStartSymbolId(pTables);
 
 	pLalr->capStates = 32;
-	pLalr->states = (LalrState *)calloc(pLalr->capStates, sizeof(LalrState));
+	pLalr->states = (LalrState *)calloc((size_t)pLalr->capStates, sizeof(LalrState));
+	if (!pLalr->states)
+		return 0;
 	pLalr->numStates = 0;
 	pLalr->numConflicts = 0;
 	pLalr->isLALR1 = 1;
 
 	LalrState *s0 = &pLalr->states[pLalr->numStates++];
 	s0->id = 0;
-	s0->transitions = (int *)malloc(totalSyms * sizeof(int));
+	s0->transitions = (int *)malloc((size_t)totalSyms * sizeof(int));
+	if (!s0->transitions)
+		return 0;
 	for (int k = 0; k < totalSyms; k++)
 		s0->transitions[k] = -1;
 
-	int *initLA = (int *)calloc(numT + 1, sizeof(int));
+	int *initLA = (int *)calloc((size_t)(numT + 1), sizeof(int));
+	if (!initLA)
+		return 0;
 	initLA[numT] = 1;
 	AddOrMergeItem(s0, -1, 1, initLA, numT + 1);
 	free(initLA);
@@ -414,12 +433,11 @@ int BuildLALR1(Tables *pTables, LalrTables *pLalr)
 				int match = 0;
 				if (pId == -1)
 				{
-					if (dot == 1 && isNT && symId == pTables->aProds[0].aSymbols[0].id)
+					if (dot == 1 && isNT && symId == startId)
 						match = 1;
 				}
 				else
 				{
-
 					const ArrayProduction *p = &pTables->aProds[pId];
 					if (dot < p->count && ((isNT && p->aSymbols[dot].Type == T_NONTERMINAL &&
 											p->aSymbols[dot].id == symId) ||
@@ -458,15 +476,27 @@ int BuildLALR1(Tables *pTables, LalrTables *pLalr)
 				if (pLalr->numStates >= pLalr->capStates)
 				{
 					pLalr->capStates *= 2;
-					LalrState *tmp = (LalrState *)realloc(pLalr->states, pLalr->capStates * sizeof(LalrState));
+					LalrState *tmp = (LalrState *)realloc(pLalr->states, (size_t)pLalr->capStates * sizeof(LalrState));
 					if (!tmp)
+					{
+						for (int j = 0; j < candidate.numItems; j++)
+							free(candidate.items[j].lookaheads);
+						free(candidate.items);
 						return 0;
+					}
 					pLalr->states = tmp;
 				}
 
 				int newId = pLalr->numStates++;
 				candidate.id = newId;
-				candidate.transitions = (int *)malloc(totalSyms * sizeof(int));
+				candidate.transitions = (int *)malloc((size_t)totalSyms * sizeof(int));
+				if (!candidate.transitions)
+				{
+					for (int j = 0; j < candidate.numItems; j++)
+						free(candidate.items[j].lookaheads);
+					free(candidate.items);
+					return 0;
+				}
 				for (int k = 0; k < totalSyms; k++)
 					candidate.transitions[k] = -1;
 				pLalr->states[newId] = candidate;
@@ -474,6 +504,7 @@ int BuildLALR1(Tables *pTables, LalrTables *pLalr)
 			}
 		}
 	}
+
 	int changed = 1;
 	while (changed)
 	{
@@ -493,7 +524,7 @@ int BuildLALR1(Tables *pTables, LalrTables *pLalr)
 				if (pId == -1)
 				{
 					if (dot == 1)
-						symIdx = numT + pTables->aProds[0].aSymbols[0].id;
+						symIdx = numT + startId;
 				}
 				else if (dot < pTables->aProds[pId].count)
 				{
@@ -512,20 +543,22 @@ int BuildLALR1(Tables *pTables, LalrTables *pLalr)
 			}
 		}
 	}
-	
-	if (pLalr->numStates <= 0)
-	{
-		return 0;   // or handle the error as you do elsewhere
-	}
-	size_t nStates = (size_t)pLalr->numStates;
 
+	if (pLalr->numStates <= 0)
+		return 0;
+
+	size_t nStates = (size_t)pLalr->numStates;
 	pLalr->actionTable = (LalrAction ***)calloc(nStates, sizeof(LalrAction **));
 	pLalr->gotoTable   = (int **)calloc(nStates, sizeof(int *));
-	
+	if (!pLalr->actionTable || !pLalr->gotoTable)
+		return 0;
+
 	for (int stIdx = 0; stIdx < pLalr->numStates; stIdx++)
 	{
-		pLalr->actionTable[stIdx] = (LalrAction **)calloc(numT + 1, sizeof(LalrAction *));
-		pLalr->gotoTable[stIdx] = (int *)malloc(numNT * sizeof(int));
+		pLalr->actionTable[stIdx] = (LalrAction **)calloc((size_t)(numT + 1), sizeof(LalrAction *));
+		pLalr->gotoTable[stIdx] = (int *)malloc((size_t)numNT * sizeof(int));
+		if (!pLalr->actionTable[stIdx] || !pLalr->gotoTable[stIdx])
+			return 0;
 		for (int nt = 0; nt < numNT; nt++)
 		{
 			pLalr->gotoTable[stIdx][nt] = pLalr->states[stIdx].transitions[numT + nt];
@@ -776,15 +809,18 @@ static int PerformLeftFactoring(Tables *pTables)
 				{
 					if (pTables->aProds[p2].aSymbols[0].id != nt || pTables->aProds[p2].count <= 1)
 						continue;
+						
 
 					int common = 0;
-					while (1 + common < pTables->aProds[p1].count &&
+					while (common < 64 &&
+						   1 + common < pTables->aProds[p1].count &&
 						   1 + common < pTables->aProds[p2].count &&
 						   SymbolsEqual(pTables->aProds[p1].aSymbols[1 + common],
 										pTables->aProds[p2].aSymbols[1 + common]))
 					{
 						common++;
 					}
+
 					if (common > bestLen)
 					{
 						bestLen = common;
@@ -886,6 +922,13 @@ int ConvertLALRtoLL1(Tables *pTables, ConversionReport *pRep)
 	AddConversionStep(pRep, "1. Original LALR(1) grammar",
 					  "Initial grammar before top-down transformations.", pTables);
 	ResetLLAnalysisData(pTables);
+
+	for (int i = 0; i < pTables->countProds; i++)
+	{
+		free(pTables->aProds[i].strAction);
+		pTables->aProds[i].strAction = NULL;
+	}
+
 	if (EliminateLeftRecursion(pTables))
 	{
 		AddConversionStep(pRep, "2. Elimination of Left Recursion",
@@ -1015,18 +1058,19 @@ void MakeHtmlFileWithReport(Tables *pTables, ConversionReport *pRep, const char 
     if (!fp) return;
     fseek(fp, 0, SEEK_END);
     long sz = ftell(fp);
+    if (sz < 0) { fclose(fp); return; }
     rewind(fp);
-    char *orig = (char *)malloc(sz + 1);          
+    char *orig = (char *)malloc((size_t)sz + 1);
     if (!orig) { fclose(fp); return; }
-    size_t nread = fread(orig, 1, sz, fp);
+    size_t nread = fread(orig, 1, (size_t)sz, fp);
     orig[nread] = '\0';
     fclose(fp);
-    char *h1End = strstr(orig, "</h1>");          
+    char *h1End = strstr(orig, "</h1>");
     if (!h1End) { free(orig); return; }
     h1End += 5;
     fp = fopen(szFileName, "wt");
     if (!fp) { free(orig); return; }
-    fwrite(orig, 1, h1End - orig, fp);
+    fwrite(orig, 1, (size_t)(h1End - orig), fp);
     fprintf(fp, "\n");
     WriteConversionReportSection(fp, pRep);
     fprintf(fp, "%s", h1End);
@@ -1037,6 +1081,7 @@ void MakeHtmlFileWithReport(Tables *pTables, ConversionReport *pRep, const char 
 void MakeLalrHtmlFile(Tables *pTables, LalrTables *pLalr, ConversionReport *pRep,
                       const char *szFileName)
 {
+    int startId = GetStartSymbolId(pTables);
     FILE *fp = fopen(szFileName, "wt");
     if (!fp)
     {
@@ -1053,13 +1098,17 @@ void MakeLalrHtmlFile(Tables *pTables, LalrTables *pLalr, ConversionReport *pRep
             pTables->countProds);
     for (int i = 0; i < pTables->countProds; i++)
     {
-        fprintf(fp, "<tr><td class='mono' align='center'>%d</td><td class='mono'>%s →",
-                i, pTables->aProds[i].aSymbols[0].strLexeme);
+        fprintf(fp, "<tr><td class='mono' align='center'>%d</td><td class='mono'>", i);
+        PrintHtmlEscaped(fp, pTables->aProds[i].aSymbols[0].strLexeme);
+        fprintf(fp, " → ");
         if (pTables->aProds[i].count == 1)
             fprintf(fp, "ε");
         else
             for (int j = 1; j < pTables->aProds[i].count; j++)
-                fprintf(fp, "%s ", pTables->aProds[i].aSymbols[j].strLexeme);
+            {
+                PrintHtmlEscaped(fp, pTables->aProds[i].aSymbols[j].strLexeme);
+                fputc(' ', fp);
+            }
         fprintf(fp, "</td></tr>\n");
     }
     fprintf(fp, "</table>\n</div>\n");
@@ -1077,26 +1126,34 @@ void MakeLalrHtmlFile(Tables *pTables, LalrTables *pLalr, ConversionReport *pRep
             int pId = pLalr->states[st].items[it].prodId;
             int dot = pLalr->states[st].items[it].dotPos;
             if (pId == -1)
-                fprintf(fp, "S' → %s%s%s", (dot == 1) ? "• " : "",
-                        pTables->aProds[0].aSymbols[0].strLexeme,
-                        (dot == 2) ? " •" : "");
+            {
+                fprintf(fp, "S' → %s", (dot == 1) ? "• " : "");
+                PrintHtmlEscaped(fp, pTables->aNonTerminals[startId].strLexeme);
+                fprintf(fp, "%s", (dot == 2) ? " •" : "");
+            }
             else
             {
                 const ArrayProduction *p = &pTables->aProds[pId];
-                fprintf(fp, "%s → ", p->aSymbols[0].strLexeme);
+                PrintHtmlEscaped(fp, p->aSymbols[0].strLexeme);
+                fprintf(fp, " → ");
                 for (int k = 1; k < p->count; k++)
                 {
                     if (k == dot) fprintf(fp, "• ");
-                    fprintf(fp, "%s ", p->aSymbols[k].strLexeme);
+                    PrintHtmlEscaped(fp, p->aSymbols[k].strLexeme);
+                    fputc(' ', fp);
                 }
                 if (dot == p->count) fprintf(fp, "•");
             }
             fprintf(fp, " <span class='badge-la'>{ ");
             for (int t = 0; t <= pTables->countTerminals; t++)
                 if (pLalr->states[st].items[it].lookaheads[t])
-                    fprintf(fp, "%s ", (t == pTables->countTerminals)
-                                             ? "$"
-                                             : pTables->aTerminals[t].strLexeme);
+                {
+                    if (t == pTables->countTerminals)
+                        fputc('$', fp);
+                    else
+                        PrintHtmlEscaped(fp, pTables->aTerminals[t].strLexeme);
+                    fputc(' ', fp);
+                }
             fprintf(fp, "}</span><br>\n");
         }
         fprintf(fp, "</td></tr>\n");
@@ -1111,10 +1168,18 @@ void MakeLalrHtmlFile(Tables *pTables, LalrTables *pLalr, ConversionReport *pRep
             pTables->countTerminals + 1, pTables->countNonTerminals);
     fprintf(fp, "<tr>");
     for (int t = 0; t < pTables->countTerminals; t++)
-        fprintf(fp, "<th class='mono'>%s</th>", pTables->aTerminals[t].strLexeme);
+    {
+        fprintf(fp, "<th class='mono'>");
+        PrintHtmlEscaped(fp, pTables->aTerminals[t].strLexeme);
+        fprintf(fp, "</th>");
+    }
     fprintf(fp, "<th class='mono'>$</th>");
     for (int nt = 0; nt < pTables->countNonTerminals; nt++)
-        fprintf(fp, "<th class='mono'>%s</th>", pTables->aNonTerminals[nt].strLexeme);
+    {
+        fprintf(fp, "<th class='mono'>");
+        PrintHtmlEscaped(fp, pTables->aNonTerminals[nt].strLexeme);
+        fprintf(fp, "</th>");
+    }
     fprintf(fp, "</tr>\n");
 
     for (int st = 0; st < pLalr->numStates; st++)
@@ -1160,6 +1225,10 @@ void MakeLalrHtmlFile(Tables *pTables, LalrTables *pLalr, ConversionReport *pRep
 void MakeLalrCFile(Tables *pTables, LalrTables *pLalr, const char *szFileName)
 {
 	if (!pLalr->isLALR1) { printf("Impossibile generare il parser C: conflitti LALR(1).\n"); return; }
+	if (!pTables || pTables->countProds <= 0 || pTables->countNonTerminals <= 0) {
+		printf("Impossibile generare il parser C: grammatica vuota.\n");
+		return;
+	}
 	FILE *fp = fopen(szFileName, "wt");
 	if (!fp) { printf("Errore nell'apertura del file %s.\n", szFileName); return; }
 	int numT = pTables->countTerminals, numNT = pTables->countNonTerminals;
@@ -1175,22 +1244,20 @@ void MakeLalrCFile(Tables *pTables, LalrTables *pLalr, const char *szFileName)
 	fprintf(fp, "enum LalrTokens {\n");
 	for (int t = 0; t < numT; t++) {
 		const char *lex = pTables->aTerminals[t].strLexeme;
-		if ((*lex >= 'A' && *lex <= 'Z') || (*lex >= 'a' && *lex <= 'z') || *lex == '_') fprintf(fp, "\tTOK_%s = %d,\n", lex, t);
-		else fprintf(fp, "\tTOK_SYM_%d = %d, /* %s */\n", t, t, lex);
+		if (IsValidCIdent(lex) && strcmp(lex, "EOF") != 0 && strncmp(lex, "SYM_", 4) != 0)
+			fprintf(fp, "\tTOK_%s = %d,\n", lex, t);
+		else {
+			fprintf(fp, "\tTOK_SYM_%d = %d, /* ", t, t);
+			PrintCSanitizedComment(fp, lex);
+			fprintf(fp, " */\n");
+		}
 	}
 	fprintf(fp, "\tTOK_EOF = %d\n};\n\n", numT);
-	
+
 	fprintf(fp, "enum LalrNonTerminals {\n");
-	if (numNT == 0)
+	for (int nt = 0; nt < numNT; nt++)
 	{
-		fprintf(fp, "\tNT_DUMMY = 0\n");
-	}
-	else
-	{
-		for (int nt = 0; nt < numNT; nt++)
-		{
-			fprintf(fp, "\tNT_%s = %d%s\n", pTables->aNonTerminals[nt].strLexeme, nt, (nt < numNT - 1) ? "," : "");
-		}
+		fprintf(fp, "\tNT_%s = %d%s\n", pTables->aNonTerminals[nt].strLexeme, nt, (nt < numNT - 1) ? "," : "");
 	}
 	fprintf(fp, "};\n\n");
 
@@ -1215,14 +1282,13 @@ void MakeLalrCFile(Tables *pTables, LalrTables *pLalr, const char *szFileName)
 		for (int nt = 0; nt < numNT; nt++) { fprintf(fp, "%3d", pLalr->gotoTable[st][nt]); if (nt < numNT - 1) fprintf(fp, ", "); }
 		fprintf(fp, " }%s\n", (st < pLalr->numStates - 1) ? "," : "");
 	}
-	
+
 	fprintf(fp, "};\n\nint ParseLALR1(yyscan_t yyscanner, YYSTYPE *pResult)\n{\n");
 	fprintf(fp, "\tsize_t capacity = 256;\n\tint *stateStack = (int *)malloc(capacity * sizeof(int));\n\tYYSTYPE *valStack = (YYSTYPE *)malloc(capacity * sizeof(YYSTYPE));\n");
 	fprintf(fp, "\tif (!stateStack || !valStack) {\n\t\tfree(stateStack); free(valStack);\n\t\tyyerror(yyscanner, \"Out of memory (initial allocation)\");\n\t\treturn 0;\n\t}\n");
-	fprintf(fp, "\tint top = 0;\n\tYYSTYPE yylval = (YYSTYPE)0;\n\tstateStack[0] = 0;\n\tint lookahead = yylex(&yylval, yyscanner);\n");
-	
+	fprintf(fp, "\tint top = 0;\n\tYYSTYPE yylval = (YYSTYPE)0;\n\tstateStack[0] = 0;\n\tvalStack[0] = (YYSTYPE)0;\n\tint lookahead = yylex(&yylval, yyscanner);\n");
+
 	fprintf(fp, "\twhile (1) {\n");
-	// Gestione dinamica dello stack 
 	fprintf(fp, "\t\tif (top >= (int)capacity - 1) {\n");
 	fprintf(fp, "\t\t\tsize_t new_cap = capacity * 2;\n");
 	fprintf(fp, "\t\t\tint *tmp_ss = (int *)realloc(stateStack, new_cap * sizeof(int));\n");
@@ -1233,11 +1299,11 @@ void MakeLalrCFile(Tables *pTables, LalrTables *pLalr, const char *szFileName)
 	fprintf(fp, "\t\t\tvalStack = tmp_vs;\n");
 	fprintf(fp, "\t\t\tcapacity = new_cap;\n");
 	fprintf(fp, "\t\t}\n");
-	
+
 	fprintf(fp, "\t\tint st = stateStack[top];\n\t\tLalrCell cell = (lookahead >= 0 && lookahead < LALR_NUM_TERMINALS) ? actionTable[st][lookahead] : (LalrCell){ACT_ERR, 0};\n");
 	fprintf(fp, "\t\tif (cell.type == ACT_SHIFT) { top++; stateStack[top] = cell.val; valStack[top] = yylval; lookahead = yylex(&yylval, yyscanner); }\n");
 	fprintf(fp, "\t\telse if (cell.type == ACT_REDUCE) {\n\t\t\tLalrProd p = aProductions[cell.val];\n\t\t\tYYSTYPE yyval = (p.rhsLen > 0) ? valStack[top - p.rhsLen + 1] : (YYSTYPE)0;\n\t\t\tswitch (cell.val) {\n");
-	
+
 	for (int i = 0; i < pTables->countProds; i++)
 	{
 		if (pTables->aProds[i].strAction && *pTables->aProds[i].strAction)
@@ -1249,14 +1315,11 @@ void MakeLalrCFile(Tables *pTables, LalrTables *pLalr, const char *szFileName)
 			free(tr);
 		}
 	}
-	
+
 	fprintf(fp, "\t\t\t\tdefault: break;\n\t\t\t}\n\t\t\ttop -= p.rhsLen;\n\t\t\tint prevSt = stateStack[top];\n\t\t\ttop++; stateStack[top] = gotoTable[prevSt][p.lhs]; valStack[top] = yyval;\n\t\t}\n");
-	
-	// Rilascio memoria in caso di ACCEPT 
 	fprintf(fp, "\t\telse if (cell.type == ACT_ACCEPT) { if (pResult && top >= 1) *pResult = valStack[top]; free(stateStack); free(valStack); return 1; }\n");
-	// Rilascio memoria in caso di errore 
 	fprintf(fp, "\t\telse { yyerror(yyscanner, \"Syntax error\"); free(stateStack); free(valStack); return 0; }\n\t}\n}\n");
-	
+
 	if (pTables->strEpilogue && *pTables->strEpilogue) fprintf(fp, "\n/* --- Epilogo --- */\n%s\n", pTables->strEpilogue);
 	fclose(fp);
 }
