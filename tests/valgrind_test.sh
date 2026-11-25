@@ -64,6 +64,17 @@ run_vg "Unsupported grammar handling (grammar_023.grm)" grammar_src/grammar_023.
 run_vg "Semantic actions ignored without --make_c_parser (calc_actions.grm)" -o output/vg_test_no_c grammar_src/calc_actions.grm
 run_vg "Semantic actions C parser generation (calc_actions.grm)" --make_c_parser -o output/vg_test_with_c grammar_src/calc_actions.grm
 
+# 6 Generated LL(1) parser (actions) on long input
+echo "------------------------------------------------------------"
+echo "[TEST] Generated LL(1) parser (actions) — long input + valgrind"
+if ./tests/test_long_inputs.sh grammar_src/expr_ll1.grm >/dev/null 2>&1; then
+    echo "  --> [OK] Clean (exit code: 0)"
+    PASS=$((PASS + 1))
+else
+    echo "  --> [FAIL] See 'tests/test_long_inputs.sh' output"
+    FAIL=$((FAIL + 1))
+fi
+
 # Cleanup temporary output artifacts
 rm -f output/vg_test_* /tmp/vg_out.txt
 
